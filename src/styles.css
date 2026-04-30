@@ -1,1 +1,89 @@
-/* You can add global styles to this file, and also import other style files */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Global CSS Variables - Brand Colors */
+:root {
+  --ui-grey-0: #FFFFFF;
+  --ui-grey-100: #FAFAFA;
+  --ui-grey-200: #F4F4F5;
+  --ui-grey-300: #E9EAEC;
+  --ui-grey-400: #D7D9DD;
+  --ui-grey-500: #B9BDC6;
+  --ui-grey-600: #8E95A3;
+  --ui-grey-700: #6C7380;
+  --ui-grey-800: #4D535E;
+  --ui-grey-900: #2A2E33;
+  --ui-grey-1000: #000000;
+
+  --ui-primary-100: #EAF3F0;
+  --ui-primary-200: #D3E6DF;
+  --ui-primary-300: #A9CFC3;
+  --ui-primary-400: #39856D;
+  --ui-primary-500: #2F6F5B;
+  --ui-primary-600: #25594A;
+  --ui-primary-700: #1B4338;
+  --ui-primary-800: #122E27;
+
+  --ui-secondary-100: #F5F5F5;
+  --ui-secondary-200: #E8E8E8;
+  --ui-secondary-300: #D6D6D6;
+  --ui-secondary-400: #000000;
+  --ui-secondary-500: #111111;
+  --ui-secondary-600: #1A1A1A;
+  --ui-secondary-700: #262626;
+  --ui-secondary-800: #333333;
+
+  /* semantic tokens */
+  --ui-color-primary: var(--ui-primary-400);
+  --ui-color-secondary: var(--ui-secondary-400);
+  --ui-color-white: var(--ui-grey-0);
+  --ui-color-light: var(--ui-grey-100);
+  --ui-color-grey: var(--ui-grey-400);
+  --ui-color-dark: var(--ui-grey-1000);
+  --ui-color-muted: var(--ui-grey-700);
+
+  --ui-primary-400-rgb: 57, 133, 109;
+  --ui-primary-600-rgb: 37, 89, 74;
+  --ui-grey-0-rgb: 255, 255, 255;
+  --ui-grey-100-rgb: 250, 250, 250;
+  --ui-grey-1000-rgb: 0, 0, 0;
+  --ui-secondary-400-rgb: 0, 0, 0;
+
+  /* Font Family */
+  --font-family-primary: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--ui-grey-100);
+  color: var(--ui-grey-900);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* Apply Poppins to common elements */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-primary);
+  font-weight: 600;
+}
+
+button {
+  font-family: var(--font-family-primary);
+}
+
+input, textarea, select {
+  font-family: var(--font-family-primary);
+}
+
+label {
+  font-family: var(--font-family-primary);
+  font-weight: 500;
+}

@@ -1,0 +1,172 @@
+<div class="dashboard-container">
+  <!-- Header -->
+  <header class="dashboard-header">
+    <div class="header-content">
+      <div class="brand">
+        <span class="brand-name">TEVAILS QUBRIUX</span>
+      </div>
+      <div class="staff-info">
+        <div class="staff-details">
+          <div class="staff-name">{{ waiterName }}</div>
+          <div class="staff-email">{{ waiterEmail }}</div>
+        </div>
+        <button (click)="logout()" class="btn-logout">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    
+    <!-- Customer Lookup -->
+    <div class="card" *ngIf="!customerFound">
+        <h2 class="section-title">Customer Lookup</h2>
+        <div class="search-box">
+            <input 
+            type="tel" 
+            [(ngModel)]="customerMobile"
+            placeholder="e.g. 7123 456789"
+            class="search-input"
+            (keyup.enter)="lookupCustomer()"
+            [disabled]="isSearching"
+            [class.input-error]="lookupError"
+            >
+            <button 
+            (click)="lookupCustomer()" 
+            class="btn-search"
+            [disabled]="!customerMobile || isSearching"
+            >
+            {{ isSearching ? 'Searching...' : 'Search' }}
+            </button>
+        </div>
+        <div *ngIf="lookupError" class="error-message">{{ lookupError }}</div>
+    </div>
+
+    <!-- Dashboard Card (After Customer Found) -->
+    <div class="card loyalty-card" *ngIf="customerFound">
+      
+      <!-- Customer Details Header -->
+      <div class="customer-details-header">
+        <div class="customer-info">
+          <div class="customer-name">{{ customer?.name }}</div>
+          <div class="customer-contact">
+            <span class="customer-phone">{{ customer?.mobileNumber }}</span>
+            <span class="separator">•</span>
+            <span class="customer-email">{{ customer?.email }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Customer Points Display -->
+      <div class="points-display">
+        <div class="points-number">{{ customer?.loyaltyPoints }}</div>
+        <div class="points-text">points available</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Step 1: Redemption (Optional) -->
+      <div class="step-section">
+        <div class="step-label">Step 1 — Redemption (optional)</div>
+        <div class="redeem-input-group">
+          <input 
+            type="number" 
+            [(ngModel)]="pointsToRedeem"
+            placeholder="Points to redeem"
+            class="redeem-input"
+            [max]="customer?.loyaltyPoints || null"
+            min="1"
+            [disabled]="isCalculatingDiscount || discountApplied"
+          >
+          <button 
+            (click)="calculateDiscount()" 
+            class="btn-calculate"
+            [disabled]="!isValidPoints() || isCalculatingDiscount || discountApplied"
+          >
+            {{ isCalculatingDiscount ? '...' : 'Fetch Discount' }}
+          </button>
+        </div>
+        
+        <!-- Discount Result -->
+        <div *ngIf="discountResponse" class="discount-result">
+          {{ discountResponse.pointsToRedeem }} → £{{ discountResponse.discountAmount.toFixed(2) }} discount
+        </div>
+        <div *ngIf="discountError" class="error-message">{{ discountError }}</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Step 2: Order Capture -->
+      <div class="step-section">
+        <div class="step-label">Step 2 — Order capture</div>
+        
+        <div class="form-field">
+          <label for="orderId">Tevalis order ID</label>
+          <input 
+            type="text" 
+            id="orderId"
+            [(ngModel)]="orderId"
+            placeholder="Enter order ID"
+            class="form-input"
+            [disabled]="isConfirmingOrder || orderConfirmed"
+          >
+        </div>
+
+        <div class="form-field">
+          <label for="amountCollected">Amount collected (£)</label>
+          <input 
+            type="number" 
+            id="amountCollected"
+            [(ngModel)]="amountCollected"
+            placeholder="0.00"
+            class="form-input"
+            step="0.01"
+            min="0"
+            [disabled]="isConfirmingOrder || orderConfirmed"
+          >
+        </div>
+      </div>
+
+      <!-- Order Summary (shows when both fields have values) -->
+      <div *ngIf="orderId && amountCollected" class="order-summary">
+        <div class="divider"></div>
+        <div class="summary-row">
+          <span class="summary-label">+ Points to earn</span>
+          <span class="summary-value points-earned">+{{ ((amountCollected || 0) * 2) | number:'1.0-0' }}</span>
+        </div>
+        <div class="summary-row" *ngIf="discountResponse">
+          <span class="summary-label">Discount applied</span>
+          <span class="summary-value discount">£{{ discountResponse.discountAmount.toFixed(2) }}</span>
+        </div>
+        <div class="summary-row total-row">
+          <span class="summary-label">Net amount paid</span>
+          <span class="summary-value net-amount">£{{ getNetAmount().toFixed(2) }}</span>
+        </div>
+      </div>
+
+      <!-- Confirm Order Button -->
+      <button 
+        *ngIf="!orderConfirmed"
+        (click)="confirmOrder()" 
+        class="btn-confirm"
+        [disabled]="!isOrderValid() || isConfirmingOrder"
+      >
+        {{ isConfirmingOrder ? 'Confirming...' : 'Confirm order' }}
+      </button>
+
+      <!-- Order Confirmation -->
+      <div *ngIf="orderConfirmed" class="confirmation-box">
+        <div class="check-icon">✓</div>
+        <div class="confirmation-text">
+          Order recorded. Order {{ orderConfirmationResponse?.orderId }} · +{{ orderConfirmationResponse?.pointsEarned }} pts earned on £{{ orderConfirmationResponse?.netAmountPaid?.toFixed(2) }} paid.
+        </div>
+        <button (click)="resetAll()" class="btn-new-lookup">
+          New Customer Lookup
+        </button>
+      </div>
+
+    </div>
+  </main>
+</div>

@@ -1,0 +1,72 @@
+<div class="login-container">
+  <div class="login-card">
+    <div class="logo-section">
+      <h1>TEVAILS QUBRIUX</h1>
+      <p class="subtitle">Loyalty Management System</p>
+    </div>
+    
+    <form (ngSubmit)="onLogin()" #loginForm="ngForm" novalidate>
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input 
+          type="email" 
+          id="email" 
+          name="email"
+          [(ngModel)]="email"
+          placeholder="Enter your email address"
+          required
+          email
+          class="form-control"
+          autocomplete="email"
+          [disabled]="isLoading"
+          [class.input-error]="loginForm.submitted && email && !isValidEmail(email)"
+        >
+        <div 
+          *ngIf="loginForm.submitted && email && !isValidEmail(email)" 
+          class="field-error"
+        >
+          Please enter a valid email address
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input 
+          type="password" 
+          id="password" 
+          name="password"
+          [(ngModel)]="password"
+          placeholder="Enter your password"
+          required
+          minlength="6"
+          class="form-control"
+          autocomplete="current-password"
+          [disabled]="isLoading"
+        >
+        <div 
+          *ngIf="loginForm.submitted && password && password.length < 6" 
+          class="field-error"
+        >
+          Password must be at least 6 characters
+        </div>
+      </div>
+
+      <div *ngIf="errorMessage" class="error-message">
+        <span class="error-icon">⚠</span>
+        {{ errorMessage }}
+      </div>
+
+      <button 
+        type="submit" 
+        class="btn-login" 
+        [disabled]="!email || !password || isLoading"
+      >
+        <span *ngIf="!isLoading">Sign In</span>
+        <span *ngIf="isLoading" class="loading-text">
+          <span class="spinner"></span>
+          Signing in...
+        </span>
+      </button>
+    </form>
+  </div>
+</div>
