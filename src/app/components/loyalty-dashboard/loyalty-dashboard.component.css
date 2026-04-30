@@ -848,3 +848,14 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* ========== STEP 1: ORDER ID ========== */
+.required {
+  color: #e74c3c;
+  font-weight: 700;
+}
+
+.input-valid {
+  border-color: var(--ui-primary-400) !important;
+  background-color: rgba(var(--ui-primary-400-rgb), 0.02) !important;
+}

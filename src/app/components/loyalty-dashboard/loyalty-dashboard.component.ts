@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { ApiService, Customer, DiscountResponse, OrderConfirmationResponse, OtpResponse, OtpVerifyResponse } from '../../services/api.service';
+import { ApiService, Customer, OrderConfirmationResponse, OtpResponse, OtpVerifyResponse } from '../../services/api.service';
 import { Router } from '@angular/router';
 
 @Component({
@@ -20,9 +20,13 @@ export class LoyaltyDashboardComponent implements OnInit {
   isSearching: boolean = false;
   lookupError: string = '';
 
-  // Step 1: Redemption
+  // Step 1: Order ID (Mandatory)
+  orderId: string = '';
+  isOrderIdValid: boolean = false;
+
+  // Step 2: Redemption
   pointsToRedeem: number | null = null;
-  discountResponse: DiscountResponse | null = null;
+  discountResponse: any = null;
   isRedeeming: boolean = false;
   discountError: string = '';
   discountApplied: boolean = false;
@@ -36,8 +40,7 @@ export class LoyaltyDashboardComponent implements OnInit {
   otpError: string = '';
   otpSentMessage: string = '';
 
-  // Step 2: Order Capture
-  orderId: string = '';
+  // Step 3: Order Capture
   amountCollected: number | null = null;
   isConfirmingOrder: boolean = false;
   orderConfirmed: boolean = false;
@@ -93,6 +96,18 @@ export class LoyaltyDashboardComponent implements OnInit {
     });
   }
 
+  // ==================== STEP 1: ORDER ID ====================
+  
+  validateOrderId(): void {
+    this.isOrderIdValid = this.orderId.trim().length > 0;
+  }
+
+  isOrderIdFilled(): boolean {
+    return this.orderId.trim().length > 0;
+  }
+
+  // ==================== STEP 2: REDEMPTION ====================
+
   isValidPoints(): boolean {
     return this.pointsToRedeem !== null && 
            this.pointsToRedeem > 0 && 
@@ -100,17 +115,18 @@ export class LoyaltyDashboardComponent implements OnInit {
            this.pointsToRedeem <= this.customer.loyaltyPoints;
   }
 
-  /**
-   * NEW: Redeem points - opens OTP popup
-   */
   redeemPointsAndGetDiscount(): void {
     if (!this.isValidPoints() || !this.pointsToRedeem || !this.customer) return;
 
     this.discountError = '';
     this.isRedeeming = true;
 
-    // Step 1: Send OTP to customer's mobile
-    this.apiService.sendRedemptionOtp(this.pointsToRedeem, this.customer.mobileNumber).subscribe({
+    // Send OTP with orderId
+    this.apiService.sendRedemptionOtp(
+      this.pointsToRedeem, 
+      this.customer.mobileNumber,
+      this.orderId  // Pass orderId
+    ).subscribe({
       next: (response: OtpResponse) => {
         if (response.success) {
           this.otpReference = response.otpReference;
@@ -128,9 +144,6 @@ export class LoyaltyDashboardComponent implements OnInit {
     });
   }
 
-  /**
-   * NEW: Verify OTP
-   */
   verifyOtp(): void {
     if (!this.otpValue || this.otpValue.length < 6) {
       this.otpError = 'Please enter a valid 6-digit OTP';
@@ -140,18 +153,21 @@ export class LoyaltyDashboardComponent implements OnInit {
     this.isVerifyingOtp = true;
     this.otpError = '';
 
-    this.apiService.verifyRedemptionOtp(this.otpReference, this.otpValue, this.pointsToRedeem!).subscribe({
+    // Verify OTP with orderId
+    this.apiService.verifyRedemptionOtp(
+      this.otpReference, 
+      this.otpValue, 
+      this.pointsToRedeem!,
+      this.orderId  // Pass orderId
+    ).subscribe({
       next: (response: OtpVerifyResponse) => {
         if (response.success) {
-          // Set discount response
           this.discountResponse = {
             pointsToRedeem: response.pointsRedeemed,
             discountAmount: response.discountAmount,
             remainingPoints: response.remainingPoints
           };
           this.discountApplied = true;
-          
-          // Close OTP popup
           this.showOtpPopup = false;
           this.otpValue = '';
           this.otpReference = '';
@@ -168,9 +184,6 @@ export class LoyaltyDashboardComponent implements OnInit {
     });
   }
 
-  /**
-   * Resend OTP
-   */
   resendOtp(): void {
     if (!this.customer || !this.pointsToRedeem) return;
     
@@ -178,7 +191,11 @@ export class LoyaltyDashboardComponent implements OnInit {
     this.otpError = '';
     this.otpValue = '';
 
-    this.apiService.sendRedemptionOtp(this.pointsToRedeem, this.customer.mobileNumber).subscribe({
+    this.apiService.sendRedemptionOtp(
+      this.pointsToRedeem, 
+      this.customer.mobileNumber,
+      this.orderId
+    ).subscribe({
       next: (response: OtpResponse) => {
         if (response.success) {
           this.otpReference = response.otpReference;
@@ -193,9 +210,6 @@ export class LoyaltyDashboardComponent implements OnInit {
     });
   }
 
-  /**
-   * Close OTP popup
-   */
   closeOtpPopup(): void {
     this.showOtpPopup = false;
     this.otpValue = '';
@@ -204,21 +218,24 @@ export class LoyaltyDashboardComponent implements OnInit {
     this.otpError = '';
   }
 
+  // ==================== STEP 3: ORDER CAPTURE ====================
+
   getNetAmount(): number {
     const amount = this.amountCollected || 0;
     const discount = this.discountResponse?.discountAmount || 0;
-    // return Math.max(0, amount - discount);
-    return Math.max(0, amount);
+    return Math.max(0, amount - discount);
   }
 
-  isOrderValid(): boolean {
-    return this.orderId.trim() !== '' && 
-           this.amountCollected !== null && 
-           this.amountCollected > 0;
+  isOrderCaptureValid(): boolean {
+    return this.amountCollected !== null && this.amountCollected > 0;
+  }
+
+  getEstimatedPoints(): number {
+    return Math.floor((this.amountCollected || 0) * 2);
   }
 
   openConfirmationPopup(): void {
-    if (!this.isOrderValid()) return;
+    if (!this.isOrderCaptureValid()) return;
     this.showConfirmationPopup = true;
   }
 
@@ -227,7 +244,7 @@ export class LoyaltyDashboardComponent implements OnInit {
   }
 
   confirmOrder(): void {
-    if (!this.isOrderValid()) return;
+    if (!this.isOrderCaptureValid()) return;
 
     this.isConfirmingOrder = true;
     const discountApplied = this.discountResponse?.discountAmount || 0;
@@ -257,6 +274,8 @@ export class LoyaltyDashboardComponent implements OnInit {
     this.customer = null;
     this.customerFound = false;
     this.lookupError = '';
+    this.orderId = '';
+    this.isOrderIdValid = false;
     this.pointsToRedeem = null;
     this.discountResponse = null;
     this.discountError = '';
@@ -267,7 +286,6 @@ export class LoyaltyDashboardComponent implements OnInit {
     this.otpValue = '';
     this.otpError = '';
     this.otpSentMessage = '';
-    this.orderId = '';
     this.amountCollected = null;
     this.orderConfirmed = false;
     this.orderConfirmationResponse = null;

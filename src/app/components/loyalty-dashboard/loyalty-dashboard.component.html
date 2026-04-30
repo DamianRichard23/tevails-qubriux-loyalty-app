@@ -3,7 +3,7 @@
   <header class="dashboard-header">
     <div class="header-content">
       <div class="brand">
-        <span class="brand-name">ASIAN 5 STAFF LOGIN</span>
+        <span class="brand-name">TEVAILS QUBRIUX</span>
       </div>
       <div class="staff-info">
         <div class="staff-details">
@@ -67,93 +67,101 @@
 
       <div class="divider"></div>
 
-      <!-- Step 1: Redemption (Optional) -->
+      <!-- Step 1: Order ID (Mandatory) -->
       <div class="step-section">
-        <div class="step-label">Step 1 — Redemption (optional)</div>
-        <div class="redeem-input-group">
-          <input 
-            type="number" 
-            [(ngModel)]="pointsToRedeem"
-            placeholder="Points to redeem"
-            class="redeem-input"
-            [max]="customer?.loyaltyPoints || null"
-            min="1"
-            [disabled]="isRedeeming || discountApplied"
-          >
-          <button 
-            (click)="redeemPointsAndGetDiscount()" 
-            class="btn-redeem"
-            [disabled]="!isValidPoints() || isRedeeming || discountApplied"
-          >
-            {{ isRedeeming ? '...' : 'Redeem' }}
-          </button>
-        </div>
-        
-        <!-- Discount Result -->
-        <div *ngIf="discountResponse && discountApplied" class="discount-result">
-          {{ discountResponse.pointsToRedeem }} points → £{{ discountResponse.discountAmount.toFixed(2) }} discount
-        </div>
-        <div *ngIf="discountError" class="error-message">{{ discountError }}</div>
-      </div>
-
-      <div class="divider"></div>
-
-      <!-- Step 2: Order Capture -->
-      <div class="step-section">
-        <div class="step-label">Step 2 — Order capture</div>
-        
+        <div class="step-label">Step 1 — Order ID <span class="required">*</span></div>
         <div class="form-field">
-          <label for="orderId">Tevalis order ID</label>
           <input 
             type="text" 
-            id="orderId"
             [(ngModel)]="orderId"
-            placeholder="Enter order ID"
+            (ngModelChange)="validateOrderId()"
+            placeholder="Enter Tevalis order ID"
             class="form-input"
-            [disabled]="isConfirmingOrder"
-          >
-        </div>
-
-        <div class="form-field">
-          <label for="amountCollected">Amount collected (£)</label>
-          <input 
-            type="number" 
-            id="amountCollected"
-            [(ngModel)]="amountCollected"
-            placeholder="0.00"
-            class="form-input"
-            step="0.01"
-            min="0"
-            [disabled]="isConfirmingOrder"
+            [class.input-valid]="isOrderIdFilled()"
           >
         </div>
       </div>
 
-      <!-- Order Summary -->
-      <!-- <div *ngIf="orderId && amountCollected" class="order-summary">
+      <!-- Step 2: Redemption (Optional) - Only show when Order ID is filled -->
+      <ng-container *ngIf="isOrderIdFilled()">
         <div class="divider"></div>
-        <div class="summary-row">
-          <span class="summary-label">+ Points to earn</span>
-          <span class="summary-value points-earned">+{{ ((amountCollected || 0) * 2) | number:'1.0-0' }}</span>
+        
+        <div class="step-section">
+          <div class="step-label">Step 2 — Redemption (optional)</div>
+          <div class="redeem-input-group">
+            <input 
+              type="number" 
+              [(ngModel)]="pointsToRedeem"
+              placeholder="Points to redeem"
+              class="redeem-input"
+              [max]="customer?.loyaltyPoints || null"
+              min="1"
+              [disabled]="isRedeeming || discountApplied"
+            >
+            <button 
+              (click)="redeemPointsAndGetDiscount()" 
+              class="btn-redeem"
+              [disabled]="!isValidPoints() || isRedeeming || discountApplied"
+            >
+              {{ isRedeeming ? '...' : 'Redeem' }}
+            </button>
+          </div>
+          
+          <div *ngIf="discountResponse && discountApplied" class="discount-result">
+            {{ discountResponse.pointsToRedeem }} points → £{{ discountResponse.discountAmount.toFixed(2) }} discount
+          </div>
+          <div *ngIf="discountError" class="error-message">{{ discountError }}</div>
         </div>
-        <div class="summary-row" *ngIf="discountResponse && discountApplied">
-          <span class="summary-label">Discount applied</span>
-          <span class="summary-value discount">£{{ discountResponse.discountAmount.toFixed(2) }}</span>
-        </div>
-        <div class="summary-row total-row">
-          <span class="summary-label">Amount collected</span>
-          <span class="summary-value net-amount">£{{ getNetAmount().toFixed(2) }}</span>
-        </div>
-      </div> -->
+      </ng-container>
 
-      <!-- Confirm Order Button -->
-      <button 
-        (click)="openConfirmationPopup()" 
-        class="btn-confirm"
-        [disabled]="!isOrderValid() || isConfirmingOrder"
-      >
-        Confirm order
-      </button>
+      <!-- Step 3: Order Capture - Only show when Order ID is filled -->
+      <ng-container *ngIf="isOrderIdFilled()">
+        <div class="divider"></div>
+        
+        <div class="step-section">
+          <div class="step-label">Step 3 — Order capture</div>
+          
+          <div class="form-field">
+            <label for="amountCollected">Amount collected (£)</label>
+            <input 
+              type="number" 
+              id="amountCollected"
+              [(ngModel)]="amountCollected"
+              placeholder="0.00"
+              class="form-input"
+              step="0.01"
+              min="0"
+              [disabled]="isConfirmingOrder"
+            >
+          </div>
+        </div>
+
+        <!-- Order Summary -->
+        <!-- <div *ngIf="amountCollected && amountCollected > 0" class="order-summary">
+          <div class="divider"></div>
+          <div class="summary-row">
+            <span class="summary-label">+ Points to earn</span>
+            <span class="summary-value points-earned">+{{ getEstimatedPoints() | number:'1.0-0' }}</span>
+          </div>
+          <div class="summary-row" *ngIf="discountResponse && discountApplied">
+            <span class="summary-label">Discount applied</span>
+            <span class="summary-value discount">£{{ discountResponse.discountAmount.toFixed(2) }}</span>
+          </div>
+          <div class="summary-row total-row">
+            <span class="summary-label">Net amount paid</span>
+            <span class="summary-value net-amount">£{{ getNetAmount().toFixed(2) }}</span>
+          </div>
+        </div> -->
+
+        <!-- Confirm Order Button -->
+        <button 
+          (click)="openConfirmationPopup()" 
+          class="btn-confirm"
+          [disabled]="!isOrderCaptureValid() || isConfirmingOrder"
+        >
+          Confirm order
+        </button>
+      </ng-container>
 
     </div>
 
@@ -175,10 +183,10 @@
             <span class="detail-label">Discount Applied</span>
             <span class="detail-value discount">£{{ discountResponse.discountAmount.toFixed(2) }}</span>
           </div>
-          <!-- <div class="detail-row">
+          <div class="detail-row">
             <span class="detail-label">Points Earned</span>
             <span class="detail-value points-earned">+{{ orderConfirmationResponse?.pointsEarned }}</span>
-          </div> -->
+          </div>
         </div>
         <button (click)="resetAll()" class="btn-new-lookup">
           New Customer Lookup
@@ -198,7 +206,6 @@
     </div>
     
     <div class="popup-body">
-      <!-- Customer Details in Popup -->
       <div class="otp-customer-details">
         <div class="otp-customer-name">{{ customer?.name }}</div>
         <div class="otp-customer-contact">
@@ -214,10 +221,9 @@
       </div>
 
       <div class="otp-points-info">
-        Redeeming <strong>{{ pointsToRedeem }}</strong> points
+        Redeeming <strong>{{ pointsToRedeem }}</strong> points for Order <strong>#{{ orderId }}</strong>
       </div>
 
-      <!-- OTP Input -->
       <div class="otp-input-section">
         <label for="otpInput">Enter 6-digit OTP</label>
         <div class="otp-input-group">
@@ -238,7 +244,6 @@
         <div *ngIf="otpError" class="error-message">{{ otpError }}</div>
       </div>
 
-      <!-- Resend OTP -->
       <div class="resend-section">
         <span>Didn't receive the code?</span>
         <button 
@@ -290,10 +295,10 @@
           <span class="popup-detail-label">Discount Applied</span>
           <span class="popup-detail-value discount">£{{ discountResponse.discountAmount.toFixed(2) }}</span>
         </div>
-        <!-- <div class="popup-detail-row total-row">
+        <div class="popup-detail-row total-row">
           <span class="popup-detail-label">Net Amount</span>
           <span class="popup-detail-value">£{{ getNetAmount().toFixed(2) }}</span>
-        </div> -->
+        </div>
       </div>
     </div>
 
