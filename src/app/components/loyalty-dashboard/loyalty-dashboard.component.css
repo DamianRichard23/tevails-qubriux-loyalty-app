@@ -420,3 +420,431 @@
   color: #c0392b;
   font-size: 0.9rem;
 }
+
+/* ========== POPUP STYLES ========== */
+
+/* Overlay */
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Popup Card */
+.popup-card {
+  background: var(--ui-grey-0);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 450px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Popup Header */
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 1.5rem 0.5rem;
+}
+
+.popup-header h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--ui-secondary-400);
+}
+
+.popup-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--ui-grey-500);
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+
+.popup-close:hover {
+  color: var(--ui-secondary-400);
+}
+
+/* Popup Body */
+.popup-body {
+  padding: 0.5rem 1.5rem 1rem;
+}
+
+.popup-message {
+  color: var(--ui-grey-700);
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+
+.popup-details {
+  background: var(--ui-grey-100);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.popup-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.popup-detail-row.total-row {
+  border-top: 1px solid var(--ui-grey-300);
+  margin-top: 0.25rem;
+  padding-top: 0.75rem;
+}
+
+.popup-detail-label {
+  color: var(--ui-grey-600);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.popup-detail-value {
+  font-weight: 600;
+  color: var(--ui-secondary-400);
+  font-size: 0.95rem;
+}
+
+.popup-detail-value.discount {
+  color: var(--ui-primary-600);
+}
+
+/* Popup Footer */
+.popup-footer {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem 1.5rem;
+}
+
+.btn-cancel {
+  flex: 1;
+  padding: 0.75rem;
+  background: var(--ui-grey-0);
+  color: var(--ui-grey-700);
+  border: 2px solid var(--ui-grey-300);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: var(--ui-grey-100);
+  border-color: var(--ui-grey-400);
+}
+
+.btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-confirm-popup {
+  flex: 2;
+  padding: 0.75rem;
+  background: var(--ui-primary-400);
+  color: var(--ui-grey-0);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-confirm-popup:hover:not(:disabled) {
+  background: var(--ui-primary-500);
+}
+
+.btn-confirm-popup:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ========== SUCCESS CARD ========== */
+.success-card {
+  text-align: center;
+}
+
+.success-content {
+  padding: 1rem 0;
+}
+
+.success-icon {
+  width: 60px;
+  height: 60px;
+  background: var(--ui-primary-400);
+  color: var(--ui-grey-0);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin: 0 auto 1rem;
+}
+
+.success-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ui-secondary-400);
+  margin-bottom: 1.5rem;
+}
+
+.success-details {
+  background: var(--ui-grey-100);
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0;
+}
+
+.detail-row:not(:last-child) {
+  border-bottom: 1px solid var(--ui-grey-200);
+}
+
+.detail-label {
+  color: var(--ui-grey-600);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.detail-value {
+  font-weight: 600;
+  color: var(--ui-secondary-400);
+  font-size: 0.95rem;
+}
+
+.detail-value.discount {
+  color: var(--ui-primary-600);
+}
+
+.detail-value.points-earned {
+  color: var(--ui-primary-400);
+  font-size: 1.1rem;
+}
+
+/* ========== REDEEM BUTTON ========== */
+.btn-redeem {
+  padding: 0.85rem 1.5rem;
+  background: var(--ui-primary-400);
+  color: var(--ui-grey-0);
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px;
+}
+
+.btn-redeem:hover:not(:disabled) {
+  background: var(--ui-primary-500);
+}
+
+.btn-redeem:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========== OTP POPUP ========== */
+.otp-popup {
+  max-width: 480px;
+}
+
+/* Customer Details in OTP Popup */
+.otp-customer-details {
+  background: var(--ui-primary-100);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.otp-customer-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--ui-secondary-400);
+  margin-bottom: 0.3rem;
+}
+
+.otp-customer-contact {
+  font-size: 0.85rem;
+  color: var(--ui-grey-600);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* OTP Message Box */
+.otp-message-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--ui-grey-100);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.otp-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.otp-message {
+  color: var(--ui-grey-800);
+  font-size: 0.9rem;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Points Info */
+.otp-points-info {
+  text-align: center;
+  color: var(--ui-primary-600);
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: var(--ui-primary-100);
+  border-radius: 6px;
+}
+
+.otp-points-info strong {
+  font-weight: 700;
+  color: var(--ui-primary-700);
+}
+
+/* OTP Input Section */
+.otp-input-section {
+  margin-bottom: 0.5rem;
+}
+
+.otp-input-section label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--ui-grey-800);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.otp-input-group {
+  display: flex;
+  justify-content: center;
+}
+
+.otp-input {
+  width: 200px;
+  padding: 0.85rem 1rem;
+  border: 2px solid var(--ui-grey-300);
+  border-radius: 8px;
+  font-size: 1.5rem;
+  text-align: center;
+  letter-spacing: 8px;
+  outline: none;
+  transition: border-color 0.3s ease;
+  font-family: monospace;
+}
+
+.otp-input:focus {
+  border-color: var(--ui-primary-400);
+  box-shadow: 0 0 0 3px rgba(var(--ui-primary-400-rgb), 0.1);
+}
+
+.otp-input:disabled {
+  background: var(--ui-grey-100);
+  cursor: not-allowed;
+}
+
+/* Resend Section */
+.resend-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--ui-grey-600);
+}
+
+.btn-resend {
+  background: none;
+  border: none;
+  color: var(--ui-primary-400);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.btn-resend:hover:not(:disabled) {
+  color: var(--ui-primary-600);
+}
+
+.btn-resend:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+/* Verify OTP Button */
+.btn-verify-otp {
+  flex: 2;
+  padding: 0.75rem;
+  background: var(--ui-primary-400);
+  color: var(--ui-grey-0);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-verify-otp:hover:not(:disabled) {
+  background: var(--ui-primary-500);
+}
+
+.btn-verify-otp:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

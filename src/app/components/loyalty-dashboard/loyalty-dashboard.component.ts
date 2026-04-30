@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { ApiService, Customer, DiscountResponse, OrderConfirmationResponse } from '../../services/api.service';
+import { ApiService, Customer, DiscountResponse, OrderConfirmationResponse, OtpResponse, OtpVerifyResponse } from '../../services/api.service';
 import { Router } from '@angular/router';
 
 @Component({
@@ -23,9 +23,18 @@ export class LoyaltyDashboardComponent implements OnInit {
   // Step 1: Redemption
   pointsToRedeem: number | null = null;
   discountResponse: DiscountResponse | null = null;
-  isCalculatingDiscount: boolean = false;
+  isRedeeming: boolean = false;
   discountError: string = '';
   discountApplied: boolean = false;
+
+  // OTP Flow
+  showOtpPopup: boolean = false;
+  otpReference: string = '';
+  otpValue: string = '';
+  isSendingOtp: boolean = false;
+  isVerifyingOtp: boolean = false;
+  otpError: string = '';
+  otpSentMessage: string = '';
 
   // Step 2: Order Capture
   orderId: string = '';
@@ -34,15 +43,8 @@ export class LoyaltyDashboardComponent implements OnInit {
   orderConfirmed: boolean = false;
   orderConfirmationResponse: OrderConfirmationResponse | null = null;
 
-  // Phone validation patterns
-  private readonly phonePatterns = {
-    // UK mobile: 07xxx xxxxxx or +44 7xxx xxxxxx
-    uk: /^(\+44\s?7\d{3}\s?\d{6}|07\d{3}\s?\d{6}|07\d{9})$/,
-    // International: + followed by 7-15 digits
-    international: /^\+[1-9]\d{6,14}$/,
-    // Basic: at least 10 digits
-    basic: /^[\d\s\+\-\(\)]{10,}$/
-  };
+  // Order Confirmation Popup
+  showConfirmationPopup: boolean = false;
 
   constructor(
     private apiService: ApiService,
@@ -50,92 +52,34 @@ export class LoyaltyDashboardComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Get waiter info from localStorage
     this.waiterName = localStorage.getItem('waiterName') || '';
     this.waiterPhone = localStorage.getItem('waiterPhone') || '';
     this.waiterEmail = localStorage.getItem('waiterEmail') || '';
   }
 
-  /**
-   * Validate phone number format
-   */
-  isValidPhone(phone: string): boolean {
-    // Remove spaces, dashes, and parentheses for validation
-    const cleanedPhone = phone.replace(/[\s\-\(\)]/g, '');
-    
-    if (!cleanedPhone) return false;
-    
-    // Check basic length (minimum 10 digits)
-    if (cleanedPhone.replace(/\D/g, '').length < 10) return false;
-    
-    // Accept any reasonably formatted phone number
-    // UK format: 07xxxxxxxxx or +447xxxxxxxxx
-    // International: +xxxxxxxxxxxx
-    const phoneRegex = /^(\+?\d{1,4})?[\d\s\-\(\)]{7,15}$/;
-    return phoneRegex.test(phone);
-  }
-
-  /**
-   * Validate phone number and return specific error message
-   */
   validatePhoneNumber(phone: string): string | null {
     if (!phone || phone.trim() === '') {
       return 'Please enter a mobile number';
     }
-
-    // Remove spaces for digit count
     const digitsOnly = phone.replace(/\D/g, '');
-    
     if (digitsOnly.length < 10) {
       return 'Phone number must be at least 10 digits';
     }
-
     if (digitsOnly.length > 15) {
       return 'Phone number is too long';
     }
-
-    const cleanedPhone = phone.trim();
-    
-    // UK mobile check
-    // const ukMobileRegex = /^(\+44\s?7\d{3}\s?\d{6}|07\d{3}\s?\d{6}|07\d{9}|\+447\d{9})$/;
-    // if (ukMobileRegex.test(cleanedPhone.replace(/\s/g, ''))) {
-    //   return null; // Valid UK mobile
-    // }
-
-    // International format check
-    // const internationalRegex = /^\+[1-9]\d{6,14}$/;
-    // if (internationalRegex.test(cleanedPhone.replace(/\s/g, ''))) {
-    //   return null; // Valid international
-    // }
-
-    // Generic phone check
-    const genericRegex = /^[\d\s\+\-\(\)]{10,15}$/;
-    if (!genericRegex.test(cleanedPhone)) {
-      return 'Please enter a valid phone number';
-    }
-
     return null;
   }
 
-  /**
-   * Lookup customer by mobile number
-   */
   lookupCustomer(): void {
-    // Clear previous errors
     this.lookupError = '';
-
-    // Validate phone number
     const validationError = this.validatePhoneNumber(this.customerMobile);
     if (validationError) {
       this.lookupError = validationError;
       return;
     }
-
     this.isSearching = true;
-
-    // Clean the phone number before sending to API
     const cleanedPhone = this.customerMobile.replace(/\s/g, '');
-
     this.apiService.getCustomerByMobile(cleanedPhone).subscribe({
       next: (customer: Customer) => {
         this.customer = customer;
@@ -149,9 +93,6 @@ export class LoyaltyDashboardComponent implements OnInit {
     });
   }
 
-  /**
-   * Step 1: Validate points input
-   */
   isValidPoints(): boolean {
     return this.pointsToRedeem !== null && 
            this.pointsToRedeem > 0 && 
@@ -160,48 +101,131 @@ export class LoyaltyDashboardComponent implements OnInit {
   }
 
   /**
-   * Step 1: Calculate discount for redemption
+   * NEW: Redeem points - opens OTP popup
    */
-  calculateDiscount(): void {
-    if (!this.isValidPoints() || !this.pointsToRedeem) return;
+  redeemPointsAndGetDiscount(): void {
+    if (!this.isValidPoints() || !this.pointsToRedeem || !this.customer) return;
 
-    this.isCalculatingDiscount = true;
     this.discountError = '';
+    this.isRedeeming = true;
 
-    this.apiService.getDiscountAmount(this.pointsToRedeem).subscribe({
-      next: (response: DiscountResponse) => {
-        this.discountResponse = response;
-        this.discountApplied = true;
-        this.isCalculatingDiscount = false;
+    // Step 1: Send OTP to customer's mobile
+    this.apiService.sendRedemptionOtp(this.pointsToRedeem, this.customer.mobileNumber).subscribe({
+      next: (response: OtpResponse) => {
+        if (response.success) {
+          this.otpReference = response.otpReference;
+          this.otpSentMessage = response.message;
+          this.otpValue = '';
+          this.otpError = '';
+          this.showOtpPopup = true;
+        }
+        this.isRedeeming = false;
       },
       error: (error: any) => {
-        this.discountError = 'Error calculating discount. Please try again.';
-        this.isCalculatingDiscount = false;
+        this.discountError = 'Failed to send OTP. Please try again.';
+        this.isRedeeming = false;
       }
     });
   }
 
   /**
-   * Get net amount (amount collected minus discount)
+   * NEW: Verify OTP
    */
-  getNetAmount(): number {
-    const amount = this.amountCollected || 0;
-    const discount = this.discountResponse?.discountAmount || 0;
-    return Math.max(0, amount - discount);
+  verifyOtp(): void {
+    if (!this.otpValue || this.otpValue.length < 6) {
+      this.otpError = 'Please enter a valid 6-digit OTP';
+      return;
+    }
+
+    this.isVerifyingOtp = true;
+    this.otpError = '';
+
+    this.apiService.verifyRedemptionOtp(this.otpReference, this.otpValue, this.pointsToRedeem!).subscribe({
+      next: (response: OtpVerifyResponse) => {
+        if (response.success) {
+          // Set discount response
+          this.discountResponse = {
+            pointsToRedeem: response.pointsRedeemed,
+            discountAmount: response.discountAmount,
+            remainingPoints: response.remainingPoints
+          };
+          this.discountApplied = true;
+          
+          // Close OTP popup
+          this.showOtpPopup = false;
+          this.otpValue = '';
+          this.otpReference = '';
+          this.otpSentMessage = '';
+        } else {
+          this.otpError = response.message || 'Invalid OTP. Please try again.';
+        }
+        this.isVerifyingOtp = false;
+      },
+      error: (error: any) => {
+        this.otpError = 'OTP verification failed. Please try again.';
+        this.isVerifyingOtp = false;
+      }
+    });
   }
 
   /**
-   * Validate order form
+   * Resend OTP
    */
+  resendOtp(): void {
+    if (!this.customer || !this.pointsToRedeem) return;
+    
+    this.isSendingOtp = true;
+    this.otpError = '';
+    this.otpValue = '';
+
+    this.apiService.sendRedemptionOtp(this.pointsToRedeem, this.customer.mobileNumber).subscribe({
+      next: (response: OtpResponse) => {
+        if (response.success) {
+          this.otpReference = response.otpReference;
+          this.otpSentMessage = response.message;
+        }
+        this.isSendingOtp = false;
+      },
+      error: (error: any) => {
+        this.otpError = 'Failed to resend OTP. Please try again.';
+        this.isSendingOtp = false;
+      }
+    });
+  }
+
+  /**
+   * Close OTP popup
+   */
+  closeOtpPopup(): void {
+    this.showOtpPopup = false;
+    this.otpValue = '';
+    this.otpReference = '';
+    this.otpSentMessage = '';
+    this.otpError = '';
+  }
+
+  getNetAmount(): number {
+    const amount = this.amountCollected || 0;
+    const discount = this.discountResponse?.discountAmount || 0;
+    // return Math.max(0, amount - discount);
+    return Math.max(0, amount);
+  }
+
   isOrderValid(): boolean {
     return this.orderId.trim() !== '' && 
            this.amountCollected !== null && 
            this.amountCollected > 0;
   }
 
-  /**
-   * Step 2: Confirm order
-   */
+  openConfirmationPopup(): void {
+    if (!this.isOrderValid()) return;
+    this.showConfirmationPopup = true;
+  }
+
+  closePopup(): void {
+    this.showConfirmationPopup = false;
+  }
+
   confirmOrder(): void {
     if (!this.isOrderValid()) return;
 
@@ -217,18 +241,17 @@ export class LoyaltyDashboardComponent implements OnInit {
         this.orderConfirmationResponse = response;
         this.orderConfirmed = true;
         this.isConfirmingOrder = false;
+        this.showConfirmationPopup = false;
       },
       error: (error: any) => {
         console.error('Error confirming order:', error);
         this.isConfirmingOrder = false;
+        this.showConfirmationPopup = false;
         alert('Error confirming order. Please try again.');
       }
     });
   }
 
-  /**
-   * Reset for new customer lookup
-   */
   resetAll(): void {
     this.customerMobile = '';
     this.customer = null;
@@ -238,15 +261,19 @@ export class LoyaltyDashboardComponent implements OnInit {
     this.discountResponse = null;
     this.discountError = '';
     this.discountApplied = false;
+    this.isRedeeming = false;
+    this.showOtpPopup = false;
+    this.otpReference = '';
+    this.otpValue = '';
+    this.otpError = '';
+    this.otpSentMessage = '';
     this.orderId = '';
     this.amountCollected = null;
     this.orderConfirmed = false;
     this.orderConfirmationResponse = null;
+    this.showConfirmationPopup = false;
   }
 
-  /**
-   * Logout
-   */
   logout(): void {
     localStorage.clear();
     this.router.navigate(['/login']);

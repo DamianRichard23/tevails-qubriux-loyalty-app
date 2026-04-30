@@ -34,6 +34,20 @@ export interface OrderConfirmationResponse {
   message: string;
 }
 
+export interface OtpResponse {
+  success: boolean;
+  message: string;
+  otpReference: string;
+}
+
+export interface OtpVerifyResponse {
+  success: boolean;
+  message: string;
+  discountAmount: number;
+  pointsRedeemed: number;
+  remainingPoints: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -51,20 +65,18 @@ export class ApiService {
     // const url = `${this.baseUrl}/waiter/login`;
     // return this.http.post<LoginResponse>(url, { email, password });
 
-    // Dummy response - Only success for specific email
     if (email === 'asura@skellam.ai' && password.length > 0) {
       const dummyResponse: LoginResponse = {
         success: true,
-        name: 'Laila Petrov',
+        name: 'Asura Skellam',
         phone: '+44 7800 654321',
-        email: 'laila.petrov@tevails.com',
+        email: 'asura@skellam.ai',
         token: 'dummy-jwt-token-12345',
         message: 'Login successful'
       };
       return of(dummyResponse).pipe(delay(500));
     }
     
-    // Simulate failed login for wrong email
     return of({
       success: false,
       name: '',
@@ -75,8 +87,14 @@ export class ApiService {
     }).pipe(delay(500));
   }
 
+  /**
+   * Lookup customer by mobile number
+   */
   getCustomerByMobile(mobileNumber: string): Observable<Customer> {
-    // TODO: Replace with actual API call
+    // TODO: Uncomment when backend is ready
+    // const url = `${this.baseUrl}/customers/lookup/${mobileNumber}`;
+    // return this.http.get<Customer>(url);
+
     const dummyCustomer: Customer = {
       id: 1,
       name: 'James Wilson',
@@ -88,8 +106,10 @@ export class ApiService {
     return of(dummyCustomer).pipe(delay(300));
   }
 
+  /**
+   * Calculate discount amount for given points (Legacy - kept for reference)
+   */
   getDiscountAmount(points: number): Observable<DiscountResponse> {
-    // TODO: Replace with actual API call
     const discountAmount = points / 100;
     const dummyResponse: DiscountResponse = {
       pointsToRedeem: points,
@@ -100,8 +120,65 @@ export class ApiService {
     return of(dummyResponse).pipe(delay(300));
   }
 
+  /**
+   * Send OTP to customer's mobile for points redemption
+   */
+  sendRedemptionOtp(points: number, customerMobile: string): Observable<OtpResponse> {
+    // TODO: Uncomment when backend is ready
+    // const url = `${this.baseUrl}/points/send-redemption-otp`;
+    // return this.http.post<OtpResponse>(url, { points, customerMobile });
+
+    const dummyResponse: OtpResponse = {
+      success: true,
+      message: `OTP sent to ${customerMobile}`,
+      otpReference: 'OTP-REF-' + Math.random().toString(36).substr(2, 9).toUpperCase()
+    };
+    
+    return of(dummyResponse).pipe(delay(500));
+  }
+
+  /**
+   * Verify OTP and get discount amount
+   */
+  verifyRedemptionOtp(otpReference: string, otp: string, points: number): Observable<OtpVerifyResponse> {
+    // TODO: Uncomment when backend is ready
+    // const url = `${this.baseUrl}/points/verify-redemption-otp`;
+    // return this.http.post<OtpVerifyResponse>(url, { otpReference, otp, points });
+
+    // Dummy: Any 6-digit OTP works
+    if (otp.length === 6) {
+      const discountAmount = points / 100;
+      const dummyResponse: OtpVerifyResponse = {
+        success: true,
+        message: 'OTP verified successfully',
+        discountAmount: parseFloat(discountAmount.toFixed(2)),
+        pointsRedeemed: points,
+        remainingPoints: 420 - points
+      };
+      return of(dummyResponse).pipe(delay(300));
+    }
+    
+    return of({
+      success: false,
+      message: 'Invalid OTP. Please try again.',
+      discountAmount: 0,
+      pointsRedeemed: 0,
+      remainingPoints: 0
+    }).pipe(delay(300));
+  }
+
+  /**
+   * Confirm order and get points earned
+   */
   confirmOrder(orderId: string, amountCollected: number, discountApplied: number = 0): Observable<OrderConfirmationResponse> {
-    // TODO: Replace with actual API call
+    // TODO: Uncomment when backend is ready
+    // const url = `${this.baseUrl}/orders/confirm`;
+    // return this.http.post<OrderConfirmationResponse>(url, {
+    //   orderId,
+    //   amountCollected,
+    //   discountApplied
+    // });
+
     const pointsEarned = Math.floor(amountCollected * 2);
     const netAmountPaid = amountCollected - discountApplied;
     
