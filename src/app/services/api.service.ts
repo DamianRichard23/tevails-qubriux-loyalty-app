@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { delay } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 export interface LoginResponse {
   success: boolean;
@@ -53,7 +54,7 @@ export interface OtpVerifyResponse {
 })
 export class ApiService {
 
-  private baseUrl = 'https://your-api-url.com/api';
+  private baseUrl = environment.apiBaseUrl;
 
   constructor(private http: HttpClient) { }
 

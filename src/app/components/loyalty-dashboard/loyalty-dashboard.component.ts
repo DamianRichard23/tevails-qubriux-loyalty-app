@@ -20,7 +20,7 @@ export class LoyaltyDashboardComponent implements OnInit {
   isSearching: boolean = false;
   lookupError: string = '';
 
-  // Step 1: Order ID (Mandatory)
+  // Step 1: Order ID + Gross Amount (Mandatory)
   orderId: string = '';
   isOrderIdValid: boolean = false;
 
@@ -41,6 +41,7 @@ export class LoyaltyDashboardComponent implements OnInit {
   otpSentMessage: string = '';
 
   // Step 3: Order Capture
+  grossAmount: number | null = null;
   amountCollected: number | null = null;
   isConfirmingOrder: boolean = false;
   orderConfirmed: boolean = false;
@@ -98,12 +99,12 @@ export class LoyaltyDashboardComponent implements OnInit {
 
   // ==================== STEP 1: ORDER ID ====================
   
-  validateOrderId(): void {
-    this.isOrderIdValid = this.orderId.trim().length > 0;
+  validateRequiredFields(): void {
+    this.isOrderIdValid = this.orderId.trim().length > 0 && this.grossAmount !== null && this.grossAmount > 0;
   }
 
-  isOrderIdFilled(): boolean {
-    return this.orderId.trim().length > 0;
+  areRequiredFieldsFilled(): boolean {
+    return this.orderId.trim().length > 0 && this.grossAmount !== null && this.grossAmount > 0;
   }
 
   // ==================== STEP 2: REDEMPTION ====================
@@ -286,6 +287,7 @@ export class LoyaltyDashboardComponent implements OnInit {
     this.otpValue = '';
     this.otpError = '';
     this.otpSentMessage = '';
+    this.grossAmount = null;
     this.amountCollected = null;
     this.orderConfirmed = false;
     this.orderConfirmationResponse = null;
