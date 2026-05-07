@@ -343,6 +343,12 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (this.customer.loyaltyPoints <= 0) {
+      this.pointsToRedeem = null;
+      this.amountCollected = this.grossAmount;
+      return;
+    }
+
     if (
       this.pointsToRedeem === null ||
       this.pointsToRedeem <= 0 ||
