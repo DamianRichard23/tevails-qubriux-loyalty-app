@@ -1,13 +1,14 @@
-import { Component, OnInit } from '@angular/core';
-import { ApiService, Customer, OrderConfirmationResponse, OtpResponse, OtpVerifyResponse } from '../../services/api.service';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ApiService, Customer, DiscountResponse, OrderConfirmationResponse, OtpResponse, OtpVerifyResponse } from '../../services/api.service';
 import { Router } from '@angular/router';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-loyalty-dashboard',
   templateUrl: './loyalty-dashboard.component.html',
   styleUrls: ['./loyalty-dashboard.component.css']
 })
-export class LoyaltyDashboardComponent implements OnInit {
+export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
   // Waiter info from localStorage
   waiterName: string = '';
   waiterPhone: string = '';
@@ -20,16 +21,19 @@ export class LoyaltyDashboardComponent implements OnInit {
   isSearching: boolean = false;
   lookupError: string = '';
 
-  // Step 1: Order ID + Gross Amount (Mandatory)
+  // Step 1: Gross Amount (Mandatory)
   orderId: string = '';
   isOrderIdValid: boolean = false;
 
   // Step 2: Redemption
   pointsToRedeem: number | null = null;
-  discountResponse: any = null;
+  discountResponse: DiscountResponse | null = null;
   isRedeeming: boolean = false;
   discountError: string = '';
   discountApplied: boolean = false;
+  rewardValidated: boolean = false;
+  readonly otpRequired: boolean = environment.otpRequired;
+  isAutoValidating: boolean = false;
 
   // OTP Flow
   showOtpPopup: boolean = false;
@@ -49,6 +53,8 @@ export class LoyaltyDashboardComponent implements OnInit {
 
   // Order Confirmation Popup
   showConfirmationPopup: boolean = false;
+  private validateDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private validationRequestVersion: number = 0;
 
   constructor(
     private apiService: ApiService,
@@ -61,13 +67,17 @@ export class LoyaltyDashboardComponent implements OnInit {
     this.waiterEmail = localStorage.getItem('waiterEmail') || '';
   }
 
+  ngOnDestroy(): void {
+    this.clearValidateDebounce();
+  }
+
   validatePhoneNumber(phone: string): string | null {
     if (!phone || phone.trim() === '') {
       return 'Please enter a mobile number';
     }
     const digitsOnly = phone.replace(/\D/g, '');
-    if (digitsOnly.length < 10) {
-      return 'Phone number must be at least 10 digits';
+    if (digitsOnly.length < 8) {
+      return 'Phone number must be at least 8 digits';
     }
     if (digitsOnly.length > 15) {
       return 'Phone number is too long';
@@ -97,14 +107,36 @@ export class LoyaltyDashboardComponent implements OnInit {
     });
   }
 
-  // ==================== STEP 1: ORDER ID ====================
+  // ==================== STEP 1: GROSS AMOUNT ====================
   
   validateRequiredFields(): void {
-    this.isOrderIdValid = this.orderId.trim().length > 0 && this.grossAmount !== null && this.grossAmount > 0;
+    this.isOrderIdValid = this.orderId.trim().length > 0;
   }
 
   areRequiredFieldsFilled(): boolean {
-    return this.orderId.trim().length > 0 && this.grossAmount !== null && this.grossAmount > 0;
+    return this.grossAmount !== null && this.grossAmount > 0;
+  }
+
+  onGrossAmountChange(): void {
+    this.clearRedemptionState(false);
+
+    if (!this.customer) {
+      return;
+    }
+
+    if (this.grossAmount === null || this.grossAmount <= 0) {
+      this.clearRedemptionState(true);
+      this.amountCollected = null;
+      return;
+    }
+
+    this.pointsToRedeem = this.customer.loyaltyPoints > 0 ? this.customer.loyaltyPoints : null;
+    this.scheduleRewardValidation();
+  }
+
+  onPointsChange(): void {
+    this.clearRedemptionState(false);
+    this.scheduleRewardValidation();
   }
 
   // ==================== STEP 2: REDEMPTION ====================
@@ -112,63 +144,46 @@ export class LoyaltyDashboardComponent implements OnInit {
   isValidPoints(): boolean {
     return this.pointsToRedeem !== null && 
            this.pointsToRedeem > 0 && 
+           this.grossAmount !== null &&
+           this.grossAmount > 0 &&
            this.customer !== null &&
            this.pointsToRedeem <= this.customer.loyaltyPoints;
   }
 
   redeemPointsAndGetDiscount(): void {
-    if (!this.isValidPoints() || !this.pointsToRedeem || !this.customer) return;
-
-    this.discountError = '';
-    this.isRedeeming = true;
-
-    // Send OTP with orderId
-    this.apiService.sendRedemptionOtp(
-      this.pointsToRedeem, 
-      this.customer.mobileNumber,
-      this.orderId  // Pass orderId
-    ).subscribe({
-      next: (response: OtpResponse) => {
-        if (response.success) {
-          this.otpReference = response.otpReference;
-          this.otpSentMessage = response.message;
-          this.otpValue = '';
-          this.otpError = '';
-          this.showOtpPopup = true;
-        }
-        this.isRedeeming = false;
-      },
-      error: (error: any) => {
-        this.discountError = 'Failed to send OTP. Please try again.';
-        this.isRedeeming = false;
-      }
-    });
+    if (!this.isValidPoints()) return;
+    this.runRewardValidation(true);
   }
 
   verifyOtp(): void {
-    if (!this.otpValue || this.otpValue.length < 6) {
-      this.otpError = 'Please enter a valid 6-digit OTP';
+    if (!this.customer || !this.pointsToRedeem || !this.otpValue || this.otpValue.length < 4) {
+      this.otpError = 'Please enter a valid OTP';
       return;
     }
 
     this.isVerifyingOtp = true;
     this.otpError = '';
 
-    // Verify OTP with orderId
     this.apiService.verifyRedemptionOtp(
-      this.otpReference, 
-      this.otpValue, 
-      this.pointsToRedeem!,
-      this.orderId  // Pass orderId
+      this.customer.mobileNumber,
+      this.customer.emailAddress || '',
+      this.pointsToRedeem,
+      this.otpValue,
+      this.otpReference || null
     ).subscribe({
       next: (response: OtpVerifyResponse) => {
         if (response.success) {
           this.discountResponse = {
+            success: true,
+            message: response.message,
             pointsToRedeem: response.pointsRedeemed,
             discountAmount: response.discountAmount,
-            remainingPoints: response.remainingPoints
+            netAmount: this.discountResponse?.netAmount ?? 0,
+            remainingPoints: response.remainingPoints,
+            requestId: this.otpReference || null
           };
           this.discountApplied = true;
+          this.rewardValidated = true;
           this.showOtpPopup = false;
           this.otpValue = '';
           this.otpReference = '';
@@ -193,9 +208,9 @@ export class LoyaltyDashboardComponent implements OnInit {
     this.otpValue = '';
 
     this.apiService.sendRedemptionOtp(
-      this.pointsToRedeem, 
       this.customer.mobileNumber,
-      this.orderId
+      this.customer.emailAddress || '',
+      this.pointsToRedeem
     ).subscribe({
       next: (response: OtpResponse) => {
         if (response.success) {
@@ -214,7 +229,6 @@ export class LoyaltyDashboardComponent implements OnInit {
   closeOtpPopup(): void {
     this.showOtpPopup = false;
     this.otpValue = '';
-    this.otpReference = '';
     this.otpSentMessage = '';
     this.otpError = '';
   }
@@ -222,13 +236,15 @@ export class LoyaltyDashboardComponent implements OnInit {
   // ==================== STEP 3: ORDER CAPTURE ====================
 
   getNetAmount(): number {
-    const amount = this.amountCollected || 0;
-    const discount = this.discountResponse?.discountAmount || 0;
-    return Math.max(0, amount - discount);
+    return this.amountCollected || 0;
   }
 
   isOrderCaptureValid(): boolean {
-    return this.amountCollected !== null && this.amountCollected > 0;
+    const redemptionRequested = this.pointsToRedeem !== null && this.pointsToRedeem > 0;
+
+    return this.orderId.trim().length > 0 &&
+           this.grossAmount !== null &&
+           this.grossAmount > 0
   }
 
   getEstimatedPoints(): number {
@@ -245,15 +261,19 @@ export class LoyaltyDashboardComponent implements OnInit {
   }
 
   confirmOrder(): void {
-    if (!this.isOrderCaptureValid()) return;
+    if (!this.isOrderCaptureValid() || !this.customer || this.grossAmount === null || this.amountCollected === null) return;
 
     this.isConfirmingOrder = true;
     const discountApplied = this.discountResponse?.discountAmount || 0;
+    const pointsToRedeem = this.discountResponse?.pointsToRedeem || 0;
 
     this.apiService.confirmOrder(
+      this.customer.customerId,
       this.orderId,
-      this.amountCollected!,
-      discountApplied
+      this.grossAmount,
+      pointsToRedeem,
+      discountApplied,
+      this.amountCollected
     ).subscribe({
       next: (response: OrderConfirmationResponse) => {
         this.orderConfirmationResponse = response;
@@ -271,6 +291,7 @@ export class LoyaltyDashboardComponent implements OnInit {
   }
 
   resetAll(): void {
+    this.clearValidateDebounce();
     this.customerMobile = '';
     this.customer = null;
     this.customerFound = false;
@@ -281,6 +302,7 @@ export class LoyaltyDashboardComponent implements OnInit {
     this.discountResponse = null;
     this.discountError = '';
     this.discountApplied = false;
+    this.rewardValidated = false;
     this.isRedeeming = false;
     this.showOtpPopup = false;
     this.otpReference = '';
@@ -292,6 +314,148 @@ export class LoyaltyDashboardComponent implements OnInit {
     this.orderConfirmed = false;
     this.orderConfirmationResponse = null;
     this.showConfirmationPopup = false;
+  }
+
+  private clearRedemptionState(resetPoints: boolean): void {
+    this.validationRequestVersion++;
+
+    if (resetPoints) {
+      this.pointsToRedeem = null;
+    }
+
+    this.discountResponse = null;
+    this.discountError = '';
+    this.discountApplied = false;
+    this.rewardValidated = false;
+    this.isRedeeming = false;
+    this.showOtpPopup = false;
+    this.otpReference = '';
+    this.otpValue = '';
+    this.otpError = '';
+    this.otpSentMessage = '';
+    this.isAutoValidating = false;
+  }
+
+  private scheduleRewardValidation(): void {
+    this.clearValidateDebounce();
+
+    if (!this.customer || this.grossAmount === null || this.grossAmount <= 0) {
+      return;
+    }
+
+    if (
+      this.pointsToRedeem === null ||
+      this.pointsToRedeem <= 0 ||
+      this.pointsToRedeem > this.customer.loyaltyPoints
+    ) {
+      this.amountCollected = this.otpRequired ? null : this.grossAmount;
+      return;
+    }
+
+    this.validateDebounceTimer = setTimeout(() => {
+      this.runRewardValidation(false);
+    }, 300);
+  }
+
+  private clearValidateDebounce(): void {
+    if (this.validateDebounceTimer) {
+      clearTimeout(this.validateDebounceTimer);
+      this.validateDebounceTimer = null;
+    }
+  }
+
+  private runRewardValidation(triggeredByButton: boolean): void {
+    if (!this.isValidPoints() || !this.pointsToRedeem || !this.customer || this.grossAmount === null) {
+      return;
+    }
+
+    this.clearValidateDebounce();
+    this.discountError = '';
+    this.isRedeeming = triggeredByButton;
+    this.isAutoValidating = !triggeredByButton;
+    const requestVersion = ++this.validationRequestVersion;
+
+    this.apiService.validateReward(
+      this.customer.customerId,
+      this.grossAmount,
+      this.pointsToRedeem
+    ).subscribe({
+      next: (response: DiscountResponse) => {
+        if (requestVersion !== this.validationRequestVersion) {
+          return;
+        }
+
+        if (!response.success) {
+          this.discountResponse = null;
+          this.discountApplied = false;
+          this.rewardValidated = false;
+          this.discountError = response.message || 'Reward validation failed. Please try again.';
+          this.isRedeeming = false;
+          this.isAutoValidating = false;
+          return;
+        }
+
+        this.rewardValidated = true;
+        this.discountApplied = true;
+        this.discountResponse = response;
+        this.pointsToRedeem = response.pointsToRedeem;
+        this.discountError = '';
+        
+        if (triggeredByButton && this.otpRequired) {
+          this.apiService.sendRedemptionOtp(
+            this.customer!.mobileNumber,
+            this.customer!.emailAddress || '',
+            response.pointsToRedeem
+          ).subscribe({
+            next: (otpResponse: OtpResponse) => {
+              if (requestVersion !== this.validationRequestVersion) {
+                return;
+              }
+
+              if (otpResponse.success) {
+                this.otpReference = otpResponse.otpReference;
+                this.otpSentMessage = otpResponse.message;
+                this.otpValue = '';
+                this.otpError = '';
+                this.showOtpPopup = true;
+                this.discountError = '';
+              } else {
+                this.discountError = otpResponse.message || 'Failed to send OTP. Please try again.';
+              }
+
+              this.isRedeeming = false;
+              this.isAutoValidating = false;
+            },
+            error: () => {
+              if (requestVersion !== this.validationRequestVersion) {
+                return;
+              }
+
+              this.discountError = 'Failed to send OTP. Please try again.';
+              this.isRedeeming = false;
+              this.isAutoValidating = false;
+            }
+          });
+          return;
+        }
+
+        this.isRedeeming = false;
+        this.isAutoValidating = false;
+      },
+      error: () => {
+        if (requestVersion !== this.validationRequestVersion) {
+          return;
+        }
+
+        this.discountResponse = null;
+        this.discountApplied = false;
+        this.rewardValidated = false;
+        this.amountCollected = this.otpRequired ? null : this.grossAmount;
+        this.discountError = 'Reward validation failed. Please try again.';
+        this.isRedeeming = false;
+        this.isAutoValidating = false;
+      }
+    });
   }
 
   logout(): void {

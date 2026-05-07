@@ -18,11 +18,15 @@
   margin: 0 auto;
 }
 
-.brand-name {
-  color: var(--ui-grey-0);
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: 1px;
+.brand {
+  display: flex;
+  align-items: center;
+}
+
+.brand-logo {
+  display: block;
+  width: min(100%, 220px);
+  height: auto;
 }
 
 .staff-info {
@@ -162,7 +166,7 @@
 
 .customer-phone,
 .customer-email {
-  font-size: 0.85rem;
+  font-size: 1.4rem;
   color: var(--ui-grey-600);
   font-weight: 500;
 }
@@ -266,6 +270,36 @@
   color: var(--ui-primary-600);
   font-weight: 500;
   font-size: 0.95rem;
+}
+
+.discount-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: var(--ui-grey-100);
+  color: var(--ui-grey-700);
+  font-weight: 400;
+  border: 1px solid var(--ui-grey-200);
+}
+
+.discount-info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: var(--ui-primary-400);
+  color: var(--ui-grey-0);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.discount-info-text {
+  line-height: 1.45;
 }
 
 /* Order Form */

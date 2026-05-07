@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { delay } from 'rxjs/operators';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 export interface LoginResponse {
@@ -15,16 +15,21 @@ export interface LoginResponse {
 
 export interface Customer {
   id: number;
+  customerId: string;
   name: string;
   mobileNumber: string;
   loyaltyPoints: number;
-  email?: string;
+  emailAddress?: string;
 }
 
 export interface DiscountResponse {
+  success: boolean;
+  message: string;
   pointsToRedeem: number;
   discountAmount: number;
+  netAmount: number;
   remainingPoints: number;
+  requestId?: string | null;
 }
 
 export interface OrderConfirmationResponse {
@@ -49,114 +54,302 @@ export interface OtpVerifyResponse {
   remainingPoints: number;
 }
 
+interface LoginApiResponse {
+  message?: string;
+  body?: string;
+  token?: string;
+  jwtToken?: string;
+  accessToken?: string;
+  email?: string;
+  username?: string;
+  userName?: string;
+  name?: string;
+  fullName?: string;
+  phone?: string;
+  mobileNumber?: string;
+  messageKey?: string | null;
+}
+
+interface ApiEnvelope<T> {
+  message?: string;
+  body?: T;
+  messageKey?: string | null;
+}
+
+interface CustomerApiResponse {
+  loyaltyDetails?: {
+    id?: number | string;
+    merchantCustomerId?: string;
+    availablePoints?: number | string;
+  };
+  customerDetails?: {
+    id?: string;
+    merchantCustomerId?: string;
+    customerName?: string;
+    firstName?: string;
+    lastName?: string | null;
+    mobileNumber?: string;
+    phoneNumber?: string;
+    emailAddress?: string | null;
+  };
+}
+
+interface ValidateRewardApiResponse {
+  success?: boolean;
+  message?: string;
+  grossAmount?: number | string;
+  loyaltyPointsToRedeem?: number | string;
+  discountOnPoints?: number | string;
+  netAmount?: number | string;
+  discount?: number | string;
+  discountAmount?: number | string;
+  redeemValue?: number | string;
+  remainingPoints?: number | string;
+  balancePoints?: number | string;
+  loyaltyPointsApplied?: number | string;
+  pointsRedeemed?: number | string;
+  requestId?: string | null;
+}
+
+interface GenerateOtpApiResponse {
+  success?: boolean;
+  message?: string;
+  requestId?: string | null;
+  otpReference?: string | null;
+}
+
+interface VerifyOtpApiResponse {
+  success?: boolean;
+  message?: string;
+  discount?: number | string;
+  discountAmount?: number | string;
+  remainingPoints?: number | string;
+  balancePoints?: number | string;
+  loyaltyPointsApplied?: number | string;
+  pointsRedeemed?: number | string;
+}
+
+interface SubmitPurchaseApiResponse {
+  success?: boolean;
+  message?: string;
+  orderId?: string;
+  pointsEarned?: number | string;
+  netAmount?: number | string;
+  netAmountPaid?: number | string;
+  discount?: number | string;
+  discountApplied?: number | string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class ApiService {
+  private readonly baseUrl = environment.apiBaseUrl;
+  readonly otpRequired = environment.otpRequired;
+  private readonly apiKey = environment.apiKey;
 
-  private baseUrl = environment.apiBaseUrl;
-
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {}
 
   login(email: string, password: string): Observable<LoginResponse> {
-    if (email === 'asura@skellam.ai' && password.length > 0) {
-      const dummyResponse: LoginResponse = {
-        success: true,
-        name: 'Asura',
-        phone: '+44 7800 654321',
-        email: 'laila.petrov@tevails.com',
-        token: 'dummy-jwt-token-12345',
-        message: 'Login successful'
-      };
-      return of(dummyResponse).pipe(delay(500));
-    }
-    
-    return of({
-      success: false,
-      name: '',
-      phone: '',
-      email: '',
-      token: '',
-      message: 'Invalid credentials'
-    }).pipe(delay(500));
+    const url = `${this.baseUrl}/asian5/signin`;
+
+    return this.http.post<LoginApiResponse>(url, {
+      username: email,
+      password
+    }, {
+      headers: this.jsonHeaders()
+    }).pipe(
+      map((response: LoginApiResponse) => {
+        const token = response.body || response.token || response.jwtToken || response.accessToken || '';
+        const name = response.name || response.fullName || response.userName || response.username || email.split('@')[0];
+
+        return {
+          success: response.message === 'SUCCESS' && !!token,
+          name,
+          phone: response.phone || response.mobileNumber || '',
+          email: response.email || email,
+          token,
+          message: response.message || (token ? 'Login successful' : 'Login failed')
+        };
+      })
+    );
   }
 
   getCustomerByMobile(mobileNumber: string): Observable<Customer> {
-    const dummyCustomer: Customer = {
-      id: 1,
-      name: 'James Wilson',
-      mobileNumber: mobileNumber,
-      loyaltyPoints: 420,
-      email: 'james.wilson@email.com'
-    };
-    
-    return of(dummyCustomer).pipe(delay(300));
+    const url = `${this.baseUrl}/asian5/getCustomer`;
+
+    return this.http.post<ApiEnvelope<CustomerApiResponse>>(url, {
+      apiKey: this.apiKey,
+      mobileNumber
+    }, {
+      headers: this.authorizedJsonHeaders()
+    }).pipe(
+      map((response: ApiEnvelope<CustomerApiResponse>) => {
+        const customerResponse = response.body || {};
+        const loyaltyDetails = customerResponse.loyaltyDetails || {};
+        const customerDetails = customerResponse.customerDetails || {};
+        const firstName = customerDetails.firstName || '';
+        const lastName = customerDetails.lastName || '';
+        const fullName = `${firstName} ${lastName}`.trim();
+
+        return {
+          id: this.toNumber(loyaltyDetails.id),
+          customerId: customerDetails.id || customerDetails.merchantCustomerId || loyaltyDetails.merchantCustomerId || '',
+          name: fullName || customerDetails.customerName || 'Customer',
+          mobileNumber: customerDetails.mobileNumber || customerDetails.phoneNumber || mobileNumber,
+          loyaltyPoints: this.toNumber(loyaltyDetails.availablePoints),
+          emailAddress: customerDetails.emailAddress || ''
+        };
+      })
+    );
   }
 
-  /**
-   * Send OTP to customer's mobile for points redemption
-   * NOW INCLUDES orderId
-   */
-  sendRedemptionOtp(points: number, customerMobile: string, orderId: string): Observable<OtpResponse> {
-    // TODO: Uncomment when backend is ready
-    // const url = `${this.baseUrl}/points/send-redemption-otp`;
-    // return this.http.post<OtpResponse>(url, { points, customerMobile, orderId });
+  validateReward(customerId: string, grossAmount: number, pointsToRedeem: number): Observable<DiscountResponse> {
+    const url = `${this.baseUrl}/asian5/validateReward`;
 
-    console.log('Sending OTP for:', { points, customerMobile, orderId });
-    
-    const dummyResponse: OtpResponse = {
-      success: true,
-      message: `OTP sent to ${customerMobile}`,
-      otpReference: 'OTP-REF-' + Math.random().toString(36).substr(2, 9).toUpperCase()
-    };
-    
-    return of(dummyResponse).pipe(delay(500));
-  }
+    return this.http.post<ApiEnvelope<ValidateRewardApiResponse>>(url, {
+      apiKey: this.apiKey,
+      customerId,
+      grossAmount,
+      loyaltyPointsApplied: pointsToRedeem
+    }, {
+      headers: this.authorizedJsonHeaders()
+    }).pipe(
+      map((response: ApiEnvelope<ValidateRewardApiResponse>) => {
+        const rewardResponse = response.body || {};
 
-  /**
-   * Verify OTP and get discount amount
-   * NOW INCLUDES orderId
-   */
-  verifyRedemptionOtp(otpReference: string, otp: string, points: number, orderId: string): Observable<OtpVerifyResponse> {
-    // TODO: Uncomment when backend is ready
-    // const url = `${this.baseUrl}/points/verify-redemption-otp`;
-    // return this.http.post<OtpVerifyResponse>(url, { otpReference, otp, points, orderId });
-
-    console.log('Verifying OTP for:', { otpReference, otp, points, orderId });
-
-    if (otp.length === 6) {
-      const discountAmount = points / 100;
-      const dummyResponse: OtpVerifyResponse = {
-        success: true,
-        message: 'OTP verified successfully',
-        discountAmount: parseFloat(discountAmount.toFixed(2)),
-        pointsRedeemed: points,
-        remainingPoints: 420 - points
+        return {
+        success: response.message === 'SUCCESS' && rewardResponse.success !== false,
+        message: rewardResponse.message || response.message || 'Reward validated successfully',
+        pointsToRedeem: this.toNumber(
+          rewardResponse.loyaltyPointsToRedeem ?? rewardResponse.loyaltyPointsApplied ?? rewardResponse.pointsRedeemed,
+          pointsToRedeem
+        ),
+        discountAmount: this.toNumber(
+          rewardResponse.discountOnPoints ?? rewardResponse.discountAmount ?? rewardResponse.discount ?? rewardResponse.redeemValue
+        ),
+        netAmount: this.toNumber(rewardResponse.netAmount, grossAmount),
+        remainingPoints: this.toNumber(rewardResponse.remainingPoints ?? rewardResponse.balancePoints),
+        requestId: rewardResponse.requestId ?? null
       };
-      return of(dummyResponse).pipe(delay(300));
-    }
-    
-    return of({
-      success: false,
-      message: 'Invalid OTP. Please try again.',
-      discountAmount: 0,
-      pointsRedeemed: 0,
-      remainingPoints: 0
-    }).pipe(delay(300));
+      })
+    );
   }
 
-  confirmOrder(orderId: string, amountCollected: number, discountApplied: number = 0): Observable<OrderConfirmationResponse> {
-    const pointsEarned = Math.floor(amountCollected * 2);
-    const netAmountPaid = amountCollected - discountApplied;
-    
-    const dummyResponse: OrderConfirmationResponse = {
-      orderId: orderId,
-      pointsEarned: pointsEarned,
-      netAmountPaid: parseFloat(netAmountPaid.toFixed(2)),
-      discountApplied: discountApplied,
-      message: 'Order confirmed successfully'
-    };
-    
-    return of(dummyResponse).pipe(delay(300));
+  sendRedemptionOtp(phoneNumber: string, email: string, points: number): Observable<OtpResponse> {
+    const url = `${this.baseUrl}/asian5/redeem/generate-otp`;
+
+    return this.http.post<ApiEnvelope<GenerateOtpApiResponse>>(url, {
+      api_key: this.apiKey,
+      phoneNumber,
+      email,
+      points
+    }, {
+      headers: this.authorizedJsonHeaders()
+    }).pipe(
+      map((response: ApiEnvelope<GenerateOtpApiResponse>) => {
+        const otpResponse = response.body || {};
+
+        return {
+          success: response.message === 'SUCCESS' && otpResponse.success !== false,
+          message: otpResponse.message || response.message || `OTP sent to ${phoneNumber}`,
+          otpReference: otpResponse.requestId || otpResponse.otpReference || ''
+        };
+      })
+    );
+  }
+
+  verifyRedemptionOtp(
+    phoneNumber: string,
+    email: string,
+    points: number,
+    otp: string,
+    requestId: string | null
+  ): Observable<OtpVerifyResponse> {
+    const url = `${this.baseUrl}/asian5/redeem/verify-otp`;
+
+    return this.http.post<ApiEnvelope<VerifyOtpApiResponse>>(url, {
+      api_key: this.apiKey,
+      phoneNumber,
+      email,
+      points,
+      otp,
+      requestId
+    }, {
+      headers: this.authorizedJsonHeaders()
+    }).pipe(
+      map((response: ApiEnvelope<VerifyOtpApiResponse>) => {
+        const verifyResponse = response.body || {};
+
+        return {
+          success: response.message === 'SUCCESS' && verifyResponse.success !== false,
+          message: verifyResponse.message || response.message || 'OTP verified successfully',
+          discountAmount: this.toNumber(verifyResponse.discountAmount ?? verifyResponse.discount),
+          pointsRedeemed: this.toNumber(verifyResponse.pointsRedeemed ?? verifyResponse.loyaltyPointsApplied, points),
+          remainingPoints: this.toNumber(verifyResponse.remainingPoints ?? verifyResponse.balancePoints)
+        };
+      })
+    );
+  }
+
+  confirmOrder(
+    customerId: string,
+    orderId: string,
+    grossAmount: number,
+    pointsToRedeem: number,
+    discountApplied: number,
+    netAmount: number
+  ): Observable<OrderConfirmationResponse> {
+    const url = `${this.baseUrl}/asian5/submitPurchase`;
+
+    return this.http.post<ApiEnvelope<SubmitPurchaseApiResponse>>(url, {
+      apiKey: this.apiKey,
+      customerId,
+      grossAmount,
+      loyaltyPointsApplied: pointsToRedeem,
+      discount: discountApplied,
+      netAmount,
+      orderId
+    }, {
+      headers: this.authorizedJsonHeaders()
+    }).pipe(
+      map((response: ApiEnvelope<SubmitPurchaseApiResponse>) => {
+        const purchaseResponse = response.body || {};
+
+        return {
+          orderId: purchaseResponse.orderId || orderId,
+          pointsEarned: this.toNumber(purchaseResponse.pointsEarned),
+          netAmountPaid: this.toNumber(purchaseResponse.netAmountPaid ?? purchaseResponse.netAmount, netAmount),
+          discountApplied: this.toNumber(purchaseResponse.discountApplied ?? purchaseResponse.discount, discountApplied),
+          message: purchaseResponse.message || response.message || 'Order confirmed successfully'
+        };
+      })
+    );
+  }
+
+  private jsonHeaders(): HttpHeaders {
+    return new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+  }
+
+  private authorizedJsonHeaders(): HttpHeaders {
+    const token = localStorage.getItem('token') || '';
+    let headers = this.jsonHeaders();
+
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    return headers;
+  }
+
+  private toNumber(value: number | string | undefined | null, fallback: number = 0): number {
+    if (value === undefined || value === null || value === '') {
+      return fallback;
+    }
+
+    const parsedValue = Number(value);
+    return Number.isFinite(parsedValue) ? parsedValue : fallback;
   }
 }

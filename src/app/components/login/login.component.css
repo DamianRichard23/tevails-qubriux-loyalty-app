@@ -21,12 +21,11 @@
   margin-bottom: 2.5rem;
 }
 
-h1 {
-  color: var(--ui-secondary-400);
-  font-size: 1.8rem;
-  font-weight: 700;
-  letter-spacing: 2px;
-  margin-bottom: 0.5rem;
+.login-logo {
+  display: block;
+  width: min(100%, 220px);
+  height: auto;
+  margin: 0 auto 0.75rem;
 }
 
 .subtitle {
