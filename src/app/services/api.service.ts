@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { getCallingCodeFromCountryCode } from '../shared/country-calling-codes';
 
 export interface LoginResponse {
   success: boolean;
@@ -18,6 +19,9 @@ export interface Customer {
   customerId: string;
   name: string;
   mobileNumber: string;
+  countryCode?: string;
+  callingCode?: string;
+  phoneNumberWithCallingCode?: string;
   loyaltyPoints: number;
   emailAddress?: string;
 }
@@ -77,10 +81,12 @@ interface ApiEnvelope<T> {
 }
 
 interface CustomerApiResponse {
+  countryCode?: string;
   loyaltyDetails?: {
     id?: number | string;
     merchantCustomerId?: string;
     availablePoints?: number | string;
+    countryCode?: string;
   };
   customerDetails?: {
     id?: string;
@@ -91,6 +97,7 @@ interface CustomerApiResponse {
     mobileNumber?: string;
     phoneNumber?: string;
     emailAddress?: string | null;
+    countryCode?: string;
   };
 }
 
@@ -191,12 +198,18 @@ export class ApiService {
         const firstName = customerDetails.firstName || '';
         const lastName = customerDetails.lastName || '';
         const fullName = `${firstName} ${lastName}`.trim();
+        const resolvedCountryCode = customerDetails.countryCode || loyaltyDetails.countryCode || customerResponse.countryCode || '';
+        const callingCode = getCallingCodeFromCountryCode(resolvedCountryCode);
+        const resolvedMobileNumber = customerDetails.mobileNumber || customerDetails.phoneNumber || mobileNumber;
 
         return {
           id: this.toNumber(loyaltyDetails.id),
           customerId: customerDetails.id || customerDetails.merchantCustomerId || loyaltyDetails.merchantCustomerId || '',
           name: fullName || customerDetails.customerName || 'Customer',
-          mobileNumber: customerDetails.mobileNumber || customerDetails.phoneNumber || mobileNumber,
+          mobileNumber: resolvedMobileNumber,
+          countryCode: resolvedCountryCode,
+          callingCode,
+          phoneNumberWithCallingCode: callingCode ? `+${callingCode} ${resolvedMobileNumber}` : resolvedMobileNumber,
           loyaltyPoints: this.toNumber(loyaltyDetails.availablePoints),
           emailAddress: customerDetails.emailAddress || ''
         };

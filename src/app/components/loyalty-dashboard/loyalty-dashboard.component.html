@@ -54,7 +54,7 @@
         <div class="customer-info">
           <div class="customer-name">{{ customer?.name }}</div>
           <div class="customer-contact">
-            <span class="customer-phone">{{ customer?.mobileNumber }}</span>
+            <span class="customer-phone">{{ customer?.phoneNumberWithCallingCode }}</span>
             <span class="separator">•</span>
             <span class="customer-email">{{ customer?.emailAddress }}</span>
           </div>
@@ -248,7 +248,7 @@
       <div class="otp-customer-details">
         <div class="otp-customer-name">{{ customer?.name }}</div>
         <div class="otp-customer-contact">
-          <span>{{ customer?.mobileNumber }}</span>
+          <span>{{ customer?.phoneNumberWithCallingCode }}</span>
           <span class="separator">•</span>
           <span>{{ customer?.emailAddress }}</span>
         </div>

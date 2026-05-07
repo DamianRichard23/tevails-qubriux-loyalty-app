@@ -2,6 +2,6 @@ export const environment = {
   production: false,
   name: 'local',
   apiBaseUrl: 'https://qa.qubriux.com/ezloyal-web',
-  apiKey: '39fb4bd2-cd35-480f-a9ac-4459669cf882',
-  otpRequired: false
+  apiKey: 'a544e3fa-3398-4f79-aec9-996c08093372',
+  otpRequired: true
 };
