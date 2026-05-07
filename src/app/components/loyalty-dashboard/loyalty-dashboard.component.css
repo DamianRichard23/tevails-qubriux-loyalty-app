@@ -117,6 +117,10 @@
   cursor: not-allowed;
 }
 
+.input-error {
+  border-color: #e74c3c !important;
+}
+
 .btn-search {
   padding: 0.85rem 2rem;
   background: var(--ui-primary-400);
@@ -442,6 +446,19 @@
 
 .btn-new-lookup:hover {
   background: var(--ui-primary-500);
+}
+
+.btn-new-lookup-inline {
+  padding: 0.65rem 1rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.field-error {
+  color: #e74c3c;
+  font-size: 0.8rem;
+  margin-top: 0.4rem;
+  font-weight: 500;
 }
 
 /* Error Message */

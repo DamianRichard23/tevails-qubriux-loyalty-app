@@ -150,6 +150,12 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
            this.pointsToRedeem <= this.customer.loyaltyPoints;
   }
 
+  hasPointsExceeded(): boolean {
+    return this.pointsToRedeem !== null &&
+           this.customer !== null &&
+           this.pointsToRedeem > this.customer.loyaltyPoints;
+  }
+
   redeemPointsAndGetDiscount(): void {
     if (!this.isValidPoints()) return;
     this.runRewardValidation(true);
@@ -239,6 +245,10 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
     return this.amountCollected || 0;
   }
 
+  getAppliedDiscountAmount(): number {
+    return this.discountResponse?.discountAmount || 0;
+  }
+
   isOrderCaptureValid(): boolean {
     const redemptionRequested = this.pointsToRedeem !== null && this.pointsToRedeem > 0;
 
@@ -253,6 +263,8 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
 
   openConfirmationPopup(): void {
     if (!this.isOrderCaptureValid()) return;
+    this.normalizeAmountCollectedForConfirmation();
+    this.normalizeRedemptionForConfirmation();
     this.showConfirmationPopup = true;
   }
 
@@ -261,9 +273,12 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
   }
 
   confirmOrder(): void {
-    if (!this.isOrderCaptureValid() || !this.customer || this.grossAmount === null || this.amountCollected === null) return;
+    if (!this.isOrderCaptureValid() || !this.customer || this.grossAmount === null) return;
 
+    this.normalizeAmountCollectedForConfirmation();
+    this.normalizeRedemptionForConfirmation();
     this.isConfirmingOrder = true;
+    const amountCollected = this.amountCollected ?? 0;
     const discountApplied = this.discountResponse?.discountAmount || 0;
     const pointsToRedeem = this.discountResponse?.pointsToRedeem || 0;
 
@@ -273,7 +288,7 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
       this.grossAmount,
       pointsToRedeem,
       discountApplied,
-      this.amountCollected
+      amountCollected
     ).subscribe({
       next: (response: OrderConfirmationResponse) => {
         this.orderConfirmationResponse = response;
@@ -367,6 +382,24 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
     if (this.validateDebounceTimer) {
       clearTimeout(this.validateDebounceTimer);
       this.validateDebounceTimer = null;
+    }
+  }
+
+  private normalizeRedemptionForConfirmation(): void {
+    if (this.discountResponse && this.discountApplied) {
+      return;
+    }
+
+    this.pointsToRedeem = 0;
+    this.discountResponse = null;
+    this.discountApplied = false;
+    this.rewardValidated = false;
+    this.discountError = '';
+  }
+
+  private normalizeAmountCollectedForConfirmation(): void {
+    if (this.amountCollected === null) {
+      this.amountCollected = 0;
     }
   }
 

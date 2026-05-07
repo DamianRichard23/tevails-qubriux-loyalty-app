@@ -59,6 +59,13 @@
             <span class="customer-email">{{ customer?.emailAddress }}</span>
           </div>
         </div>
+        <button
+          type="button"
+          class="btn-new-lookup btn-new-lookup-inline"
+          (click)="resetAll()"
+        >
+          New Lookup
+        </button>
       </div>
 
       <div class="divider"></div>
@@ -103,6 +110,7 @@
               (ngModelChange)="onPointsChange()"
               placeholder="Points to redeem"
               class="redeem-input"
+              [class.input-error]="hasPointsExceeded()"
               [max]="customer?.loyaltyPoints || null"
               min="1"
               [disabled]="isRedeeming"
@@ -115,6 +123,13 @@
             >
               {{ isRedeeming ? 'Validating...' : 'Validate' }}
             </button>
+          </div>
+          <div *ngIf="hasPointsExceeded()" class="field-error">
+            Redemption points cannot be greater than available points
+          </div>
+          <div *ngIf="customer?.loyaltyPoints === 0" class="discount-result discount-info zero-points-info">
+            <span class="discount-info-icon" aria-hidden="true">i</span>
+            <span class="discount-info-text">You have 0 points available.</span>
           </div>
 
           <div *ngIf="isAutoValidating" class="discount-result">
@@ -140,10 +155,10 @@
         <div class="divider"></div>
         
         <div class="step-section">
-          <div class="step-label">Step 3 — Order capture</div>
+          <div class="step-label">Step 3 — Order capture <span class="required">*</span></div>
 
           <div class="form-field">
-            <label for="orderId">Order ID</label>
+            <label for="orderId">Order ID <span class="required">*</span></label>
             <input 
               type="text" 
               id="orderId"
@@ -151,6 +166,7 @@
               (ngModelChange)="validateRequiredFields()"
               placeholder="Enter Tevalis order ID"
               class="form-input"
+              required
               [class.input-valid]="orderId.trim().length > 0"
               [disabled]="isConfirmingOrder"
             >
@@ -218,9 +234,9 @@
             <span class="detail-label">Amount Collected</span>
             <span class="detail-value">{{ amountCollected?.toFixed(2) }}</span>
           </div>
-          <div class="detail-row" *ngIf="discountResponse && discountApplied">
+          <div class="detail-row">
             <span class="detail-label">Discount Applied</span>
-            <span class="detail-value discount">{{ discountResponse.discountAmount.toFixed(2) }}</span>
+            <span class="detail-value discount">{{ getAppliedDiscountAmount().toFixed(2) }}</span>
           </div>
           <!-- <div class="detail-row">
             <span class="detail-label">Points Earned</span>
@@ -334,9 +350,9 @@
           <span class="popup-detail-label">Amount Collected</span>
           <span class="popup-detail-value">{{ amountCollected?.toFixed(2) }}</span>
         </div>
-        <div class="popup-detail-row" *ngIf="discountResponse && discountApplied">
+        <div class="popup-detail-row">
           <span class="popup-detail-label">Discount Applied</span>
-          <span class="popup-detail-value discount">{{ discountResponse.discountAmount.toFixed(2) }}</span>
+          <span class="popup-detail-value discount">{{ getAppliedDiscountAmount().toFixed(2) }}</span>
         </div>
         <div class="popup-detail-row total-row">
           <span class="popup-detail-label">Net Amount</span>
