@@ -202,6 +202,38 @@
   font-weight: 500;
 }
 
+.points-text-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-refresh-points {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(var(--ui-primary-400-rgb), 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--ui-primary-600);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-refresh-points:hover:not(:disabled) {
+  background: var(--ui-grey-0);
+  border-color: rgba(var(--ui-primary-400-rgb), 0.4);
+}
+
+.btn-refresh-points:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .divider {
   height: 1px;
   background: var(--ui-grey-200);
@@ -304,6 +336,12 @@
 
 .discount-info-text {
   line-height: 1.45;
+}
+
+.discount-success {
+  background: #e8f7ee;
+  border: 1px solid #b7e4c7;
+  color: #1b5e20;
 }
 
 /* Order Form */

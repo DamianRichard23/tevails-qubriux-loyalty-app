@@ -19,6 +19,7 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
   customer: Customer | null = null;
   customerFound: boolean = false;
   isSearching: boolean = false;
+  isRefreshingCustomer: boolean = false;
   lookupError: string = '';
 
   // Step 1: Gross Amount (Mandatory)
@@ -43,6 +44,8 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
   isVerifyingOtp: boolean = false;
   otpError: string = '';
   otpSentMessage: string = '';
+  otpValidationSuccessMessage: string = '';
+  isOtpVerifiedForCurrentPoints: boolean = false;
 
   // Step 3: Order Capture
   grossAmount: number | null = null;
@@ -107,6 +110,33 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  refreshCustomerPoints(): void {
+    if (!this.customer) {
+      return;
+    }
+
+    this.lookupError = '';
+    this.isRefreshingCustomer = true;
+
+    this.apiService.getCustomerByMobile(this.customer.mobileNumber).subscribe({
+      next: (customer: Customer) => {
+        this.customer = customer;
+        this.clearRedemptionState(true);
+
+        if (this.grossAmount !== null && this.grossAmount > 0) {
+          this.pointsToRedeem = customer.loyaltyPoints > 0 ? customer.loyaltyPoints : null;
+          this.scheduleRewardValidation();
+        }
+
+        this.isRefreshingCustomer = false;
+      },
+      error: () => {
+        this.lookupError = 'Unable to refresh customer points. Please try again.';
+        this.isRefreshingCustomer = false;
+      }
+    });
+  }
+
   // ==================== STEP 1: GROSS AMOUNT ====================
   
   validateRequiredFields(): void {
@@ -139,6 +169,11 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
     this.scheduleRewardValidation();
   }
 
+  preventScrollValueChange(event: WheelEvent): void {
+    const input = event.target as HTMLInputElement | null;
+    input?.blur();
+  }
+
   // ==================== STEP 2: REDEMPTION ====================
 
   isValidPoints(): boolean {
@@ -161,6 +196,10 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
     this.runRewardValidation(true);
   }
 
+  isValidateButtonDisabled(): boolean {
+    return !this.isValidPoints() || this.isRedeeming || this.isAutoValidating || this.isOtpVerifiedForCurrentPoints;
+  }
+
   verifyOtp(): void {
     if (!this.customer || !this.pointsToRedeem || !this.otpValue || this.otpValue.length < 4) {
       this.otpError = 'Please enter a valid OTP';
@@ -179,17 +218,28 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
     ).subscribe({
       next: (response: OtpVerifyResponse) => {
         if (response.success) {
+          const existingDiscount = this.discountResponse;
+          const resolvedPointsRedeemed =
+            response.pointsRedeemed ?? existingDiscount?.pointsToRedeem ?? this.pointsToRedeem ?? 0;
+          const resolvedDiscountAmount = response.discountAmount ?? existingDiscount?.discountAmount ?? 0;
+          const resolvedRemainingPoints =
+            response.remainingPoints ??
+            existingDiscount?.remainingPoints ??
+            ((this.customer?.loyaltyPoints ?? 0) - resolvedPointsRedeemed);
+
           this.discountResponse = {
             success: true,
             message: response.message,
-            pointsToRedeem: response.pointsRedeemed,
-            discountAmount: response.discountAmount,
-            netAmount: this.discountResponse?.netAmount ?? 0,
-            remainingPoints: response.remainingPoints,
+            pointsToRedeem: resolvedPointsRedeemed,
+            discountAmount: resolvedDiscountAmount,
+            netAmount: existingDiscount?.netAmount ?? 0,
+            remainingPoints: Math.max(resolvedRemainingPoints, 0),
             requestId: this.otpReference || null
           };
           this.discountApplied = true;
           this.rewardValidated = true;
+          this.isOtpVerifiedForCurrentPoints = true;
+          this.otpValidationSuccessMessage = 'OTP validation successful.';
           this.showOtpPopup = false;
           this.otpValue = '';
           this.otpReference = '';
@@ -324,6 +374,8 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
     this.otpValue = '';
     this.otpError = '';
     this.otpSentMessage = '';
+    this.otpValidationSuccessMessage = '';
+    this.isOtpVerifiedForCurrentPoints = false;
     this.grossAmount = null;
     this.amountCollected = null;
     this.orderConfirmed = false;
@@ -348,6 +400,8 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
     this.otpValue = '';
     this.otpError = '';
     this.otpSentMessage = '';
+    this.otpValidationSuccessMessage = '';
+    this.isOtpVerifiedForCurrentPoints = false;
     this.isAutoValidating = false;
   }
 
@@ -410,6 +464,8 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
 
     this.clearValidateDebounce();
     this.discountError = '';
+    this.otpValidationSuccessMessage = '';
+    this.isOtpVerifiedForCurrentPoints = false;
     this.isRedeeming = triggeredByButton;
     this.isAutoValidating = !triggeredByButton;
     const requestVersion = ++this.validationRequestVersion;

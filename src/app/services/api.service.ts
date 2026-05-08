@@ -53,9 +53,9 @@ export interface OtpResponse {
 export interface OtpVerifyResponse {
   success: boolean;
   message: string;
-  discountAmount: number;
-  pointsRedeemed: number;
-  remainingPoints: number;
+  discountAmount?: number;
+  pointsRedeemed?: number;
+  remainingPoints?: number;
 }
 
 interface LoginApiResponse {
@@ -292,14 +292,27 @@ export class ApiService {
       headers: this.authorizedJsonHeaders()
     }).pipe(
       map((response: ApiEnvelope<VerifyOtpApiResponse>) => {
-        const verifyResponse = response.body || {};
+        const verifyResponse =
+          response.body && typeof response.body === 'object' ? response.body : {};
+        const hasDiscountAmount =
+          verifyResponse.discountAmount !== undefined || verifyResponse.discount !== undefined;
+        const hasPointsRedeemed =
+          verifyResponse.pointsRedeemed !== undefined || verifyResponse.loyaltyPointsApplied !== undefined;
+        const hasRemainingPoints =
+          verifyResponse.remainingPoints !== undefined || verifyResponse.balancePoints !== undefined;
 
         return {
           success: response.message === 'SUCCESS' && verifyResponse.success !== false,
           message: verifyResponse.message || response.message || 'OTP verified successfully',
-          discountAmount: this.toNumber(verifyResponse.discountAmount ?? verifyResponse.discount),
-          pointsRedeemed: this.toNumber(verifyResponse.pointsRedeemed ?? verifyResponse.loyaltyPointsApplied, points),
-          remainingPoints: this.toNumber(verifyResponse.remainingPoints ?? verifyResponse.balancePoints)
+          discountAmount: hasDiscountAmount
+            ? this.toNumber(verifyResponse.discountAmount ?? verifyResponse.discount)
+            : undefined,
+          pointsRedeemed: hasPointsRedeemed
+            ? this.toNumber(verifyResponse.pointsRedeemed ?? verifyResponse.loyaltyPointsApplied, points)
+            : undefined,
+          remainingPoints: hasRemainingPoints
+            ? this.toNumber(verifyResponse.remainingPoints ?? verifyResponse.balancePoints)
+            : undefined
         };
       })
     );

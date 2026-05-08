@@ -73,7 +73,19 @@
       <!-- Customer Points Display -->
       <div class="points-display">
         <div class="points-number">{{ customer?.loyaltyPoints }}</div>
-        <div class="points-text">points available</div>
+        <div class="points-text-row">
+          <div class="points-text">points available</div>
+          <button
+            type="button"
+            class="btn-refresh-points"
+            (click)="refreshCustomerPoints()"
+            [disabled]="isRefreshingCustomer"
+            aria-label="Refresh available points"
+            title="Refresh available points"
+          >
+            {{ isRefreshingCustomer ? '...' : '↻' }}
+          </button>
+        </div>
       </div>
 
       <div class="divider"></div>
@@ -88,6 +100,7 @@
             id="grossAmount"
             [(ngModel)]="grossAmount"
             (ngModelChange)="onGrossAmountChange()"
+            (wheel)="preventScrollValueChange($event)"
             placeholder="0.00"
             class="form-input"
             step="0.01"
@@ -108,6 +121,7 @@
               type="number" 
               [(ngModel)]="pointsToRedeem"
               (ngModelChange)="onPointsChange()"
+              (wheel)="preventScrollValueChange($event)"
               placeholder="Points to redeem"
               class="redeem-input"
               [class.input-error]="hasPointsExceeded()"
@@ -119,9 +133,9 @@
               *ngIf="otpRequired"
               (click)="redeemPointsAndGetDiscount()" 
               class="btn-redeem"
-              [disabled]="!isValidPoints() || isRedeeming || isAutoValidating"
+              [disabled]="isValidateButtonDisabled()"
             >
-              {{ isRedeeming ? 'Validating...' : 'Validate' }}
+              {{ isRedeeming ? 'Validating...' : (isOtpVerifiedForCurrentPoints ? 'Validated' : 'Validate') }}
             </button>
           </div>
           <div *ngIf="hasPointsExceeded()" class="field-error">
@@ -138,6 +152,9 @@
           
           <div *ngIf="discountResponse" class="discount-result">
             {{ discountResponse.pointsToRedeem }} points → {{ discountResponse.discountAmount.toFixed(2) }} discount
+          </div>
+          <div *ngIf="otpValidationSuccessMessage" class="discount-result discount-success">
+            {{ otpValidationSuccessMessage }}
           </div>
           <div *ngIf="discountResponse" class="discount-result discount-info">
             <span class="discount-info-icon" aria-hidden="true">i</span>
@@ -178,6 +195,7 @@
               type="number" 
               id="amountCollected"
               [(ngModel)]="amountCollected"
+              (wheel)="preventScrollValueChange($event)"
               placeholder="0.00"
               class="form-input"
               step="0.01"
