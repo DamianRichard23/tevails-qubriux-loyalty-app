@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ApiService, Customer, DiscountResponse, OrderConfirmationResponse, OtpResponse, OtpVerifyResponse } from '../../services/api.service';
-import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -61,7 +61,7 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
 
   constructor(
     private apiService: ApiService,
-    private router: Router
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -554,7 +554,6 @@ export class LoyaltyDashboardComponent implements OnInit, OnDestroy {
   }
 
   logout(): void {
-    localStorage.clear();
-    this.router.navigate(['/login']);
+    this.authService.logout();
   }
 }

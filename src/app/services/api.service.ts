@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { Observable, OperatorFunction, throwError } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { getCallingCodeFromCountryCode } from '../shared/country-calling-codes';
+import { AuthService } from './auth.service';
 
 export interface LoginResponse {
   success: boolean;
@@ -155,7 +156,10 @@ export class ApiService {
   readonly otpRequired = environment.otpRequired;
   private readonly apiKey = environment.apiKey;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private authService: AuthService
+  ) {}
 
   login(email: string, password: string): Observable<LoginResponse> {
     const url = `${this.baseUrl}/asian5/signin`;
@@ -213,7 +217,8 @@ export class ApiService {
           loyaltyPoints: this.toNumber(loyaltyDetails.availablePoints),
           emailAddress: customerDetails.emailAddress || ''
         };
-      })
+      }),
+      this.handleUnauthorizedErrors()
     );
   }
 
@@ -245,7 +250,8 @@ export class ApiService {
         remainingPoints: this.toNumber(rewardResponse.remainingPoints ?? rewardResponse.balancePoints),
         requestId: rewardResponse.requestId ?? null
       };
-      })
+      }),
+      this.handleUnauthorizedErrors()
     );
   }
 
@@ -268,7 +274,8 @@ export class ApiService {
           message: otpResponse.message || response.message || `OTP sent to ${phoneNumber}`,
           otpReference: otpResponse.requestId || otpResponse.otpReference || ''
         };
-      })
+      }),
+      this.handleUnauthorizedErrors()
     );
   }
 
@@ -314,7 +321,8 @@ export class ApiService {
             ? this.toNumber(verifyResponse.remainingPoints ?? verifyResponse.balancePoints)
             : undefined
         };
-      })
+      }),
+      this.handleUnauthorizedErrors()
     );
   }
 
@@ -349,8 +357,19 @@ export class ApiService {
           discountApplied: this.toNumber(purchaseResponse.discountApplied ?? purchaseResponse.discount, discountApplied),
           message: purchaseResponse.message || response.message || 'Order confirmed successfully'
         };
-      })
+      }),
+      this.handleUnauthorizedErrors()
     );
+  }
+
+  private handleUnauthorizedErrors<T>(): OperatorFunction<T, T> {
+    return catchError((error: HttpErrorResponse) => {
+      if (error.status === 401) {
+        this.authService.logoutDueToUnauthorized();
+      }
+
+      return throwError(() => error);
+    });
   }
 
   private jsonHeaders(): HttpHeaders {
